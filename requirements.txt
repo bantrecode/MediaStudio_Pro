@@ -1,0 +1,16 @@
+# ========================================================
+# All-in-One Media Studio - Dependencies
+# ========================================================
+
+# GUI Framework (Qt 6 - Native Windows, QtMultimedia, QThread)
+PySide6==6.7.0
+
+# Process monitoring, resource management, process tree kill
+psutil==5.9.8
+
+# Unit Testing độc lập cho thư mục core/
+pytest==8.2.0
+pytest-mock==3.14.0
+
+# Đóng gói Windows Desktop (.exe)
+pyinstaller==6.6.0

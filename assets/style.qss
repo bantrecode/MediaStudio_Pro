@@ -1,0 +1,230 @@
+/* ===================================================
+   MediaStudio Pro - Modern Dark Theme Stylesheet (QSS)
+   =================================================== */
+
+/* Toàn bộ cửa sổ và font chữ mặc định */
+QWidget {
+    background-color: #121418;
+    color: #E2E8F0;
+    font-family: "Segoe UI", "SF Pro Display", -apple-system, sans-serif;
+    font-size: 13px;
+    selection-background-color: #6366F1;
+    selection-color: #FFFFFF;
+}
+
+/* Sidebar bên trái */
+#Sidebar {
+    background-color: #181B20;
+    border-right: 1px solid #23272F;
+}
+
+#SidebarTitle {
+    font-size: 17px;
+    font-weight: bold;
+    color: #FFFFFF;
+}
+
+#SidebarSubtitle {
+    font-size: 11px;
+    color: #818CF8;
+    font-weight: 600;
+}
+
+/* Nút bấm trên Sidebar */
+QPushButton.sidebar-btn {
+    background-color: transparent;
+    color: #94A3B8;
+    border: none;
+    border-radius: 8px;
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+QPushButton.sidebar-btn:hover {
+    background-color: #23272F;
+    color: #F8FAFC;
+}
+
+QPushButton.sidebar-btn:checked, QPushButton.sidebar-btn.active {
+    background-color: #6366F1;
+    color: #FFFFFF;
+    font-weight: bold;
+}
+
+/* Khu vực làm việc chính (Workspace) */
+#Workspace {
+    background-color: #121418;
+    padding: 16px;
+}
+
+/* Thẻ / Card Container */
+QFrame.card {
+    background-color: #1E2229;
+    border: 1px solid #2D333E;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+/* Tiêu đề mục */
+QLabel.heading {
+    font-size: 18px;
+    font-weight: bold;
+    color: #F8FAFC;
+}
+
+QLabel.subheading {
+    font-size: 12px;
+    color: #94A3B8;
+}
+
+/* Ô nhập liệu (QLineEdit, QTextEdit) */
+QLineEdit, QTextEdit, QPlainTextEdit {
+    background-color: #181B20;
+    border: 1px solid #333945;
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #FFFFFF;
+}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
+    border: 1px solid #6366F1;
+    background-color: #1B1F27;
+}
+
+/* Nút bấm hành động tiêu chuẩn */
+QPushButton.btn-primary {
+    background-color: #6366F1;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-weight: 600;
+}
+
+QPushButton.btn-primary:hover {
+    background-color: #4F46E5;
+}
+
+QPushButton.btn-primary:pressed {
+    background-color: #4338CA;
+}
+
+QPushButton.btn-secondary {
+    background-color: #262B34;
+    color: #E2E8F0;
+    border: 1px solid #3B4252;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 500;
+}
+
+QPushButton.btn-secondary:hover {
+    background-color: #333945;
+    border-color: #4C566A;
+}
+
+QPushButton.btn-danger {
+    background-color: #EF4444;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 600;
+}
+
+QPushButton.btn-danger:hover {
+    background-color: #DC2626;
+}
+
+/* Thanh tiến trình (ProgressBar) */
+QProgressBar {
+    background-color: #1A1D24;
+    border: 1px solid #2E3440;
+    border-radius: 6px;
+    text-align: center;
+    color: #FFFFFF;
+    font-weight: bold;
+    height: 14px;
+}
+
+QProgressBar::chunk {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #6366F1, stop:1 #A855F7);
+    border-radius: 5px;
+}
+
+/* Bảng điều khiển Log Console */
+#LogConsole {
+    background-color: #0E1013;
+    border-top: 1px solid #23272F;
+}
+
+#LogDisplay {
+    background-color: #0D0F12;
+    border: none;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 12px;
+    color: #CBD5E1;
+}
+
+/* QScrollBar Dark Mode */
+QScrollBar:vertical {
+    border: none;
+    background-color: #121418;
+    width: 8px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #2D333E;
+    min-height: 20px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #4B5563;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background-color: #121418;
+    height: 8px;
+    margin: 0px;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #2D333E;
+    min-width: 20px;
+    border-radius: 4px;
+}
+
+/* ComboBox */
+QComboBox {
+    background-color: #181B20;
+    border: 1px solid #333945;
+    border-radius: 8px;
+    padding: 6px 12px;
+    color: #FFFFFF;
+}
+
+QComboBox:hover {
+    border-color: #6366F1;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #1E2229;
+    border: 1px solid #333945;
+    selection-background-color: #6366F1;
+    color: #FFFFFF;
+}
+

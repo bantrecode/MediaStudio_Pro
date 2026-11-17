@@ -1,0 +1,43 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# Caches and logs
+.pytest_cache/
+*.log
+app.lock
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# PyInstaller & Build artifacts
+build/app/
+dist/
+*.spec.bak
+
+# Large binary files (>100MB limit on GitHub)
+# Tải tự động bằng lệnh: python assets/bin/download_binaries.py
+assets/bin/ffmpeg.exe
+assets/bin/ffprobe.exe
+assets/bin/yt-dlp.exe
+*.zip
+*.7z
+*.tar.gz
+
+# Operating System files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
