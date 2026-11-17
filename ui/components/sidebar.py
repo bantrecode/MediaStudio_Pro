@@ -19,6 +19,7 @@ class Sidebar(QWidget):
     page_changed = Signal(int)
     open_settings = Signal()
     open_about = Signal()
+    open_help = Signal()
 
     def __init__(self, modules: List[BaseModule], parent=None):
         super().__init__(parent)
@@ -67,11 +68,17 @@ class Sidebar(QWidget):
 
         layout.addStretch()
 
-        # 3. Phím Cài đặt & Giới thiệu
+        # 3. Phím Cài đặt, Trợ giúp & Giới thiệu
         sep2 = QFrame()
         sep2.setFrameShape(QFrame.HLine)
         sep2.setStyleSheet("color: #23272F; margin: 8px 0;")
         layout.addWidget(sep2)
+
+        btn_help = QPushButton("📖  Hướng Dẫn Sử Dụng")
+        btn_help.setProperty("class", "sidebar-btn")
+        btn_help.setCursor(Qt.PointingHandCursor)
+        btn_help.clicked.connect(self.open_help.emit)
+        layout.addWidget(btn_help)
 
         btn_settings = QPushButton("⚙️  Cài Đặt Hệ Thống")
         btn_settings.setProperty("class", "sidebar-btn")

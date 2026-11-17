@@ -239,3 +239,30 @@ Tài liệu này lưu lại toàn bộ các bước triển khai, thay đổi m�
 - Bản chạy trực tiếp: **`dist/MediaStudio/MediaStudio.exe`** (đầy đủ Python runtime, Qt6, ffmpeg, ffprobe, yt-dlp).
 - Tổng số Unit Tests đạt chuẩn: **45/45 Passed (100%)**.
 
+---
+
+## [2026-11-18] - Tích Hợp Hệ Thống Trợ Giúp (Help Center) & Tối Ưu Tải Video Đa Nền Tảng (TikTok, Facebook, Shorts)
+
+### 1. Xây Dựng Hệ Thống Trợ Giúp & Hướng Dẫn Tích Hợp Trong App:
+- **`ui/dialogs/help_dialog.py`:**
+  - Hộp thoại trợ giúp chuyên nghiệp dạng Tab (`HelpDialog`):
+    * **🚀 Bắt Đầu Nhanh:** Hướng dẫn 3 bước đơn giản cho người dùng mới bắt đầu.
+    * **📥 Tải Video Đa Nền Tảng:** Hướng dẫn tải video TikTok không logo, Facebook Reels, YouTube 4K, tải nhạc MP3.
+    * **✂️ Cắt & Ghép Video:** Phân biệt Stream Copy và Re-encode, tính năng Auto-split chia đoạn cho TikTok/Shorts.
+    * **🔄 Nén & Chuyển Đổi:** Nén gửi Zalo (<25MB), Discord (<10MB), Remux MOV sang MP4 trong 2 giây.
+    * **⚠️ Lưu Ý Quan Trọng Cần Tránh:** Hướng dẫn phòng tránh bị chặn IP / Bot Detection (lỗi 429), video riêng tư, cảnh báo Keyframe khi cắt nhanh và kiểm tra dung lượng ổ đĩa.
+  - Tích hợp nút **"📖 Hướng Dẫn Sử Dụng"** trực tiếp trên Sidebar và kết nối mở tự động trên giao diện chính.
+- **Tài liệu hướng dẫn độc lập (`HUONG_DAN_CHI_TIET.md`):**
+  - Soạn thảo cẩm nang sử dụng chi tiết, hướng dẫn toàn bộ tính năng và giải đáp thắc mắc thường gặp (FAQ) cho người dùng cuối.
+
+### 2. Nâng Cấp Tải Video Đa Nền Tảng (TikTok, Facebook, Instagram, Douyin):
+- **Cải tiến định dạng stream đa nền tảng (`core/ytdlp_engine.py`):**
+  - Mở rộng bộ chọn format của yt-dlp để hỗ trợ cả tỷ lệ khung hình dọc 9:16 (`width<=1080`) và luồng nén đơn lẻ (progressive single streams) phổ biến trên TikTok, Facebook Reels, Douyin, Instagram.
+  - Bổ sung fallback chuỗi: `bestvideo[height<=1080]+bestaudio/best[height<=1080]/bestvideo[width<=1080]+bestaudio/best[width<=1080]/best[ext=mp4]/best`.
+  - Đảm bảo video TikTok luôn được tải về ở chất lượng cao nhất và **hoàn toàn sạch logo (No-Watermark)**.
+- **Bổ sung giả lập User-Agent trình duyệt hiện đại:**
+  - Giảm thiểu tối đa nguy cơ bị chặn bot hoặc yêu cầu xác thực bởi các hệ thống Cloudflare / CDN mạng xã hội.
+- **Giao diện trực quan:**
+  - Thêm huy hiệu nhận diện nền tảng trên giao diện: `🌐 Hỗ trợ: YouTube • TikTok (Không logo) • Facebook Reels • Instagram • Bilibili • X`.
+  - Cập nhật placeholder hướng dẫn dán link đa nền tảng.
+

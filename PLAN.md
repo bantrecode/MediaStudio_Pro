@@ -106,6 +106,10 @@
 - [x] Đóng gói hoàn chỉnh PyInstaller `--onedir` tại `dist/MediaStudio/MediaStudio.exe`.
 - [x] Tự động nén gói Portable phát hành **`dist/MediaStudio_Portable.zip` (185.4 MB)**.
 - [x] Toàn bộ **45/45 Unit Tests** đạt chuẩn (100% Passed).
+- [x] **Hệ Thống Trợ Giúp (Help Center) & Tối Ưu Đa Nền Tảng:**
+  - Tích hợp `HelpDialog` trực tiếp trong app với 5 chủ đề: Bắt đầu nhanh, Tải đa nền tảng, Cắt & Ghép, Nén Zalo/Discord, Lưu ý quan trọng & phòng tránh lỗi (chống chặn bot 429, Keyframe, ổ cứng).
+  - Soạn cẩm nang độc lập `HUONG_DAN_CHI_TIET.md` cho người dùng cuối.
+  - Tối ưu hóa chuỗi format của `core/ytdlp_engine.py` cho tỷ lệ khung hình dọc 9:16 (TikTok, Reels, Shorts) và luồng MP4 progressive đơn lẻ, bảo đảm tải TikTok hoàn toàn sạch logo (No-Watermark).
 
 ---
 

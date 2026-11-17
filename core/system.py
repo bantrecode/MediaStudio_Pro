@@ -47,31 +47,47 @@ def resource_path(relative_path: str) -> Path:
     return get_app_root() / relative_path
 
 
+import tempfile
+
+
 def get_appdata_dir() -> Path:
     """
     Lấy thư mục lưu trữ cấu hình, lịch sử và cache của ứng dụng:
-    Mặc định: %APPDATA%\\MediaStudio\\
+    Mặc định: %APPDATA%\\MediaStudio\\ (tự động fallback sang temp nếu bị từ chối quyền)
     """
     appdata = os.environ.get("APPDATA")
     if appdata:
         base_dir = Path(appdata) / "MediaStudio"
     else:
         base_dir = Path.home() / ".mediastudio"
-    base_dir.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        base_dir.mkdir(parents=True, exist_ok=True)
+    except (PermissionError, OSError):
+        base_dir = Path(tempfile.gettempdir()) / "MediaStudio"
+        base_dir.mkdir(parents=True, exist_ok=True)
     return base_dir
 
 
 def get_logs_dir() -> Path:
     """Thư mục lưu trữ log xoay vòng: %APPDATA%\\MediaStudio\\logs\\"""
     p = get_appdata_dir() / "logs"
-    p.mkdir(parents=True, exist_ok=True)
+    try:
+        p.mkdir(parents=True, exist_ok=True)
+    except (PermissionError, OSError):
+        p = Path(tempfile.gettempdir()) / "MediaStudio" / "logs"
+        p.mkdir(parents=True, exist_ok=True)
     return p
 
 
 def get_temp_dir() -> Path:
     """Thư mục file tạm an toàn: %APPDATA%\\MediaStudio\\temp\\"""
     p = get_appdata_dir() / "temp"
-    p.mkdir(parents=True, exist_ok=True)
+    try:
+        p.mkdir(parents=True, exist_ok=True)
+    except (PermissionError, OSError):
+        p = Path(tempfile.gettempdir()) / "MediaStudio" / "temp"
+        p.mkdir(parents=True, exist_ok=True)
     return p
 
 
@@ -82,7 +98,12 @@ get_cache_dir = get_temp_dir
 def get_custom_bin_dir() -> Path:
     """Thư mục chứa các nhị phân cập nhật động: %APPDATA%\\MediaStudio\\bin\\"""
     p = get_appdata_dir() / "bin"
-    p.mkdir(parents=True, exist_ok=True)
+    try:
+        p.mkdir(parents=True, exist_ok=True)
+    except (PermissionError, OSError):
+        p = Path(tempfile.gettempdir()) / "MediaStudio" / "bin"
+        p.mkdir(parents=True, exist_ok=True)
+    return p
     return p
 
 

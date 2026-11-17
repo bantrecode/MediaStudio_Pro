@@ -27,8 +27,9 @@ class YtDlpEngine:
     @staticmethod
     def get_ydl_opts_with_bypass(proxy: str = "") -> Dict[str, Any]:
         """
-        Cấu hình yt-dlp tối ưu kế thừa từ bản Desktop chạy mượt:
-        - Để yt-dlp tự chọn player client mặc định (không ép web_embedded)
+        Cấu hình yt-dlp tối ưu đa nền tảng (YouTube, TikTok, Facebook, Douyin, Bilibili):
+        - Tự chọn client phù hợp (mặc định của yt-dlp)
+        - Giả lập User-Agent trình duyệt hiện đại chống chặn bot
         - Hỗ trợ Deno / Node runtime cho JS challenge giải mã link YouTube
         - Socket timeout 30s, retries 3 lần
         """
@@ -41,6 +42,14 @@ class YtDlpEngine:
             'fragment_retries': 3,
             'ffmpeg_location': ffmpeg_bin,
             'js_runtimes': {'deno': {}, 'node': {}},
+            'http_headers': {
+                'User-Agent': (
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                    'AppleWebKit/537.36 (KHTML, like Gecko) '
+                    'Chrome/124.0.0.0 Safari/537.36'
+                ),
+                'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
+            }
         }
         if proxy and proxy.strip():
             opts['proxy'] = proxy.strip()
@@ -153,7 +162,7 @@ class YtDlpEngine:
         output_tmpl = os.path.join(output_dir, "%(title)s.%(ext)s")
         args.extend(["-o", output_tmpl])
 
-        # Định dạng chất lượng
+        # Định dạng chất lượng đa nền tảng (hỗ trợ cả video ngang 16:9 và video dọc 9:16 TikTok/Reels)
         if audio_only:
             args.extend([
                 "-x",  # Trích xuất âm thanh
@@ -164,15 +173,43 @@ class YtDlpEngine:
             if quality == "best":
                 fmt = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best"
             elif quality == "4K":
-                fmt = "bestvideo[height<=2160][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=2160]+bestaudio/best[height<=2160]"
+                fmt = (
+                    "bestvideo[height<=2160][ext=mp4]+bestaudio[ext=m4a]/"
+                    "bestvideo[height<=2160]+bestaudio/"
+                    "best[height<=2160]/"
+                    "bestvideo[width<=2160]+bestaudio/"
+                    "best[width<=2160]/"
+                    "best[ext=mp4]/best"
+                )
             elif quality == "1080p":
-                fmt = "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[height<=1080]"
+                fmt = (
+                    "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/"
+                    "bestvideo[height<=1080]+bestaudio/"
+                    "best[height<=1080]/"
+                    "bestvideo[width<=1080]+bestaudio/"
+                    "best[width<=1080]/"
+                    "best[ext=mp4]/best"
+                )
             elif quality == "720p":
-                fmt = "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best[height<=720]"
+                fmt = (
+                    "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/"
+                    "bestvideo[height<=720]+bestaudio/"
+                    "best[height<=720]/"
+                    "bestvideo[width<=720]+bestaudio/"
+                    "best[width<=720]/"
+                    "best[ext=mp4]/best"
+                )
             elif quality == "480p":
-                fmt = "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=480]+bestaudio/best[height<=480]"
+                fmt = (
+                    "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/"
+                    "bestvideo[height<=480]+bestaudio/"
+                    "best[height<=480]/"
+                    "bestvideo[width<=480]+bestaudio/"
+                    "best[width<=480]/"
+                    "best[ext=mp4]/best"
+                )
             else:
-                fmt = "bestvideo+bestaudio/best"
+                fmt = "bestvideo+bestaudio/best[ext=mp4]/best"
 
             args.extend(["-f", fmt, "--merge-output-format", "mp4"])
 

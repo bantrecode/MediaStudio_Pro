@@ -24,6 +24,7 @@ from ui.components.job_queue_panel import JobQueuePanel
 from ui.components.log_console import LogConsole
 from ui.dialogs.settings_dialog import SettingsDialog
 from ui.dialogs.about_dialog import AboutDialog
+from ui.dialogs.help_dialog import HelpDialog
 from ui.bridge import JobQueueBridge
 from core.config import ConfigManager
 from core.logger import get_logger
@@ -92,6 +93,7 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self):
         self.sidebar.page_changed.connect(self._on_page_changed)
+        self.sidebar.open_help.connect(self._open_help)
         self.sidebar.open_settings.connect(self._open_settings)
         self.sidebar.open_about.connect(self._open_about)
 
@@ -103,6 +105,10 @@ class MainWindow(QMainWindow):
         self.workspace.setCurrentIndex(index)
         if index < len(self.modules):
             self.log_console.append_log(f"Chuyển sang module: {self.modules[index].display_name}", "INFO")
+
+    def _open_help(self):
+        dlg = HelpDialog(self)
+        dlg.exec()
 
     def _open_settings(self):
         dlg = SettingsDialog(self)

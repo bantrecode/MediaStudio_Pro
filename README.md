@@ -90,7 +90,7 @@ MediaStudio_Pro/
 │   ├── main_window.py       # Cửa sổ chính Shell UI
 │   ├── bridge.py            # Cầu nối thread giữa Core và Qt
 │   ├── components/          # Sidebar, JobQueuePanel, LogConsole
-│   ├── dialogs/             # SettingsDialog, AboutDialog
+│   ├── dialogs/             # SettingsDialog, AboutDialog, HelpDialog
 │   └── views/               # Giao diện của 4 module
 │       ├── converter_widget.py
 │       ├── downloader_view.py
@@ -101,7 +101,8 @@ MediaStudio_Pro/
 │   ├── MediaStudio/         # Bản chạy trực tiếp (MediaStudio.exe)
 │   └── MediaStudio_Portable.zip # Bản nén Portable gửi sang máy khác (185 MB)
 ├── main.py                  # Entry Point khởi chạy app
-└── requirements.txt         # Danh sách thư viện Python
+├── HUONG_DAN_CHI_TIET.md    # Cẩm nang hướng dẫn sử dụng chi tiết & FAQ
+├── requirements.txt         # Danh sách thư viện Python
 ```
 
 ---

@@ -67,11 +67,15 @@ class DownloaderView(QWidget):
         lbl_title = QLabel("📥 Trình Tải Video Đa Năng")
         lbl_title.setProperty("class", "heading")
 
-        self.chk_clipboard = QCheckBox("⚡ Tự động bắt link từ Clipboard (Copy)")
+        lbl_platforms = QLabel("🌐 Hỗ trợ: YouTube • TikTok (Không logo) • Facebook Reels • Instagram • Bilibili • X")
+        lbl_platforms.setStyleSheet("font-size: 11px; color: #10B981; font-weight: 500; margin-left: 10px;")
+
+        self.chk_clipboard = QCheckBox("⚡ Bắt link Clipboard")
         self.chk_clipboard.setChecked(self.config_mgr.get("auto_clipboard", True))
         self.chk_clipboard.setStyleSheet("color: #818CF8; font-weight: 500;")
 
         header.addWidget(lbl_title)
+        header.addWidget(lbl_platforms)
         header.addStretch()
         header.addWidget(self.chk_clipboard)
         main_layout.addLayout(header)
@@ -92,7 +96,7 @@ class DownloaderView(QWidget):
 
         row_input = QHBoxLayout()
         self.txt_url = QLineEdit()
-        self.txt_url.setPlaceholderText("Dán đường link YouTube, TikTok, Facebook, Douyin vào đây...")
+        self.txt_url.setPlaceholderText("Dán đường link YouTube, TikTok, Facebook Reels, Douyin, X, Bilibili vào đây...")
         self.txt_url.textChanged.connect(self._on_url_text_changed)
 
         btn_paste = QPushButton("📋 Dán")
