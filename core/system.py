@@ -75,6 +75,10 @@ def get_temp_dir() -> Path:
     return p
 
 
+# Alias tương thích ngược
+get_cache_dir = get_temp_dir
+
+
 def get_custom_bin_dir() -> Path:
     """Thư mục chứa các nhị phân cập nhật động: %APPDATA%\\MediaStudio\\bin\\"""
     p = get_appdata_dir() / "bin"

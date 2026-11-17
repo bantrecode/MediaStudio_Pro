@@ -17,7 +17,7 @@ from modules.base_module import BaseModule
 from core.job_queue.job_model import Job
 from core.merger_engine import MergerEngine
 from core.ffmpeg_runner import FFmpegRunner
-from core.system import get_cache_dir
+from core.system import get_temp_dir, get_cache_dir
 from core.logger import get_logger
 from ui.views.merger_widget import MergerWidget
 
