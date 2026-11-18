@@ -16,7 +16,8 @@ from typing import Optional, List, Dict, Any
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QComboBox, QCheckBox, QFrame, QFileDialog, QMessageBox,
-    QTabWidget, QTextEdit, QRadioButton, QButtonGroup, QApplication
+    QTabWidget, QTextEdit, QRadioButton, QButtonGroup, QApplication,
+    QScrollArea
 )
 from PySide6.QtCore import Qt, Slot, QThread, Signal
 from core.ytdlp_engine import YtDlpEngine
@@ -59,8 +60,28 @@ class DownloaderView(QWidget):
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(18, 16, 18, 16)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+
+        # Vỏ bọc căn giữa với max-width ~1100px
+        outer_container = QWidget()
+        outer_layout = QHBoxLayout(outer_container)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        container = QWidget()
+        container.setMaximumWidth(1100)
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(18, 16, 18, 16)
+        container_layout.setSpacing(12)
+
+        outer_layout.addStretch(1)
+        outer_layout.addWidget(container, 0)
+        outer_layout.addStretch(1)
 
         # 1. Header Module
         header = QHBoxLayout()
@@ -68,25 +89,21 @@ class DownloaderView(QWidget):
         lbl_title.setProperty("class", "heading")
 
         lbl_platforms = QLabel("🌐 Hỗ trợ: YouTube • TikTok (Không logo) • Facebook Reels • Instagram • Bilibili • X")
-        lbl_platforms.setStyleSheet("font-size: 11px; color: #10B981; font-weight: 500; margin-left: 10px;")
+        lbl_platforms.setProperty("class", "label-success")
+        lbl_platforms.setStyleSheet("font-size: 11px; margin-left: 10px;")
 
         self.chk_clipboard = QCheckBox("⚡ Bắt link Clipboard")
         self.chk_clipboard.setChecked(self.config_mgr.get("auto_clipboard", True))
-        self.chk_clipboard.setStyleSheet("color: #818CF8; font-weight: 500;")
+        self.chk_clipboard.setProperty("class", "label-accent")
 
         header.addWidget(lbl_title)
         header.addWidget(lbl_platforms)
         header.addStretch()
         header.addWidget(self.chk_clipboard)
-        main_layout.addLayout(header)
+        container_layout.addLayout(header)
 
         # 2. Tabs: Tải Đơn Link vs Tải Hàng Loạt (Batch)
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet("""
-            QTabWidget::pane { border: 1px solid #2D333E; border-radius: 8px; background: #181B20; }
-            QTabBar::tab { background: #121418; color: #94A3B8; padding: 7px 16px; border-top-left-radius: 6px; border-top-right-radius: 6px; margin-right: 4px; font-weight: 500; }
-            QTabBar::tab:selected { background: #181B20; color: #FFFFFF; font-weight: bold; border: 1px solid #2D333E; border-bottom: none; }
-        """)
 
         # --- Tab 1: Tải Đơn Link / Playlist ---
         tab_single = QWidget()
@@ -116,21 +133,21 @@ class DownloaderView(QWidget):
 
         # Card Thông Tin Video
         self.card_info = QFrame()
-        self.card_info.setProperty("class", "card")
-        self.card_info.setStyleSheet("background: #121418; padding: 10px;")
+        self.card_info.setProperty("class", "card-nested")
         info_layout = QVBoxLayout(self.card_info)
         info_layout.setContentsMargins(10, 8, 10, 8)
         info_layout.setSpacing(4)
 
         self.lbl_video_title = QLabel("🎬 Chưa có thông tin video. Hãy dán link và bấm 'Lấy Thông Tin'.")
-        self.lbl_video_title.setStyleSheet("font-weight: 600; color: #E2E8F0; font-size: 13px;")
+        self.lbl_video_title.setStyleSheet("font-weight: 600; font-size: 13px;")
         self.lbl_video_title.setWordWrap(True)
 
         self.lbl_video_meta = QLabel("⏱️ Thời lượng: --:--  |  👤 Kênh: --")
-        self.lbl_video_meta.setStyleSheet("font-size: 11px; color: #94A3B8;")
+        self.lbl_video_meta.setProperty("class", "label-muted")
 
         self.lbl_dedup_warning = QLabel("")
-        self.lbl_dedup_warning.setStyleSheet("font-size: 11px; color: #FBBF24; font-weight: bold;")
+        self.lbl_dedup_warning.setProperty("class", "label-warning")
+        self.lbl_dedup_warning.setStyleSheet("font-size: 11px; font-weight: bold;")
         self.lbl_dedup_warning.setVisible(False)
 
         info_layout.addWidget(self.lbl_video_title)
@@ -147,7 +164,7 @@ class DownloaderView(QWidget):
         batch_layout.setSpacing(6)
 
         lbl_batch_hint = QLabel("Nhập danh sách link video (mỗi link nằm trên một dòng):")
-        lbl_batch_hint.setStyleSheet("color: #94A3B8; font-size: 11px;")
+        lbl_batch_hint.setProperty("class", "label-muted")
 
         self.txt_batch_urls = QTextEdit()
         self.txt_batch_urls.setPlaceholderText("https://www.youtube.com/watch?v=...\nhttps://www.tiktok.com/@.../video/...\nhttps://fb.watch/...")
@@ -157,7 +174,7 @@ class DownloaderView(QWidget):
         batch_layout.addWidget(self.txt_batch_urls)
         self.tabs.addTab(tab_batch, "Tải Hàng Loạt (Batch Links)")
 
-        main_layout.addWidget(self.tabs)
+        container_layout.addWidget(self.tabs)
 
         # 3. Card Tuỳ Chọn Tải Xuống
         card_opts = QFrame()
@@ -184,13 +201,15 @@ class DownloaderView(QWidget):
         # Dropdown chất lượng / định dạng
         row_qual = QHBoxLayout()
         lbl_qual = QLabel("Chất Lượng:")
-        lbl_qual.setStyleSheet("color: #94A3B8; font-weight: 500;")
+        lbl_qual.setProperty("class", "label-muted")
+        lbl_qual.setStyleSheet("font-weight: 500;")
 
         self.cbo_quality = QComboBox()
         self._populate_video_qualities()
 
         lbl_limit = QLabel("Giới Hạn Tốc Độ:")
-        lbl_limit.setStyleSheet("color: #94A3B8; font-weight: 500; margin-left: 12px;")
+        lbl_limit.setProperty("class", "label-muted")
+        lbl_limit.setStyleSheet("font-weight: 500; margin-left: 12px;")
         self.cbo_speed_limit = QComboBox()
         self.cbo_speed_limit.addItem("Không giới hạn", "")
         self.cbo_speed_limit.addItem("10 MB/s", "10M")
@@ -209,12 +228,13 @@ class DownloaderView(QWidget):
         row_qual.addWidget(self.chk_playlist)
         opts_layout.addLayout(row_qual)
 
-        main_layout.addWidget(card_opts)
+        container_layout.addWidget(card_opts)
 
         # 4. Khu vực Lưu & Nút Submit Job
         action_row = QHBoxLayout()
         lbl_dest = QLabel("Lưu Tại:")
-        lbl_dest.setStyleSheet("color: #94A3B8; font-weight: 500;")
+        lbl_dest.setProperty("class", "label-muted")
+        lbl_dest.setStyleSheet("font-weight: 500;")
 
         default_dir = self.config_mgr.get("default_output_dir", str(Path.home() / "Downloads"))
         self.txt_dest = QLineEdit(default_dir)
@@ -234,12 +254,16 @@ class DownloaderView(QWidget):
         action_row.addWidget(self.txt_dest, 1)
         action_row.addWidget(btn_browse_dest)
         action_row.addWidget(self.btn_submit, 1)
-        main_layout.addLayout(action_row)
+        container_layout.addLayout(action_row)
 
         # Disclaimer bản quyền
         lbl_disclaimer = QLabel("⚖️ Miễn trừ trách nhiệm: Ứng dụng chỉ cung cấp công cụ kỹ thuật. Bạn hoàn toàn tự chịu trách nhiệm về bản quyền đối với các video được tải về.")
-        lbl_disclaimer.setStyleSheet("color: #64748B; font-size: 10px; font-style: italic;")
-        main_layout.addWidget(lbl_disclaimer)
+        lbl_disclaimer.setProperty("class", "label-muted")
+        lbl_disclaimer.setStyleSheet("font-size: 10px; font-style: italic;")
+        container_layout.addWidget(lbl_disclaimer)
+
+        scroll.setWidget(outer_container)
+        main_layout.addWidget(scroll)
 
     def _populate_video_qualities(self):
         self.cbo_quality.clear()

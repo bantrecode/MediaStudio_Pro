@@ -16,6 +16,42 @@ class PathManager:
     _temp_dir = None
     _cached_ffmpeg = None
     _cached_ffprobe = None
+    _custom_ffmpeg = None
+    _custom_ffprobe = None
+
+    @classmethod
+    def set_custom_ffmpeg_path(cls, path: str):
+        """Đặt đường dẫn tùy chọn thủ công cho ffmpeg.exe."""
+        cls._custom_ffmpeg = path.strip() if path else None
+        cls._cached_ffmpeg = None
+
+    @classmethod
+    def set_custom_ffprobe_path(cls, path: str):
+        """Đặt đường dẫn tùy chọn thủ công cho ffprobe.exe."""
+        cls._custom_ffprobe = path.strip() if path else None
+        cls._cached_ffprobe = None
+
+    @classmethod
+    def test_binary(cls, path: str) -> tuple[bool, str]:
+        """Kiểm tra xem file thực thi có chạy được không và trả về phiên bản."""
+        if not path or not os.path.exists(path):
+            return False, "File không tồn tại"
+        try:
+            import subprocess
+            from core.system import get_subprocess_kwargs
+            res = subprocess.run(
+                [path, "-version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                **get_subprocess_kwargs()
+            )
+            first_line = res.stdout.split("\n")[0] if res.stdout else ""
+            if "version" in first_line.lower() or res.returncode == 0:
+                return True, first_line.strip()
+            return False, "Không phải binary hợp lệ"
+        except Exception as e:
+            return False, str(e)
 
     @classmethod
     def get_app_dir(cls) -> Path:
@@ -79,10 +115,24 @@ class PathManager:
     def get_ffmpeg_path(cls) -> str:
         """
         Định vị file thực thi ffmpeg.exe:
+        0. Đường dẫn tùy chọn thủ công do người dùng cấu hình
         1. Ưu tiên thư mục bin/ bên trong gói ứng dụng (_MEIPASS/bin hoặc app_dir/bin)
         2. Thư mục cùng cấp với file .exe (nếu người dùng copy ffmpeg.exe để cạnh app)
         3. Trong biến môi trường PATH của Windows
         """
+        if cls._custom_ffmpeg and os.path.exists(cls._custom_ffmpeg):
+            return cls._custom_ffmpeg
+
+        # Kiểm tra cấu hình trong ConfigManager
+        try:
+            from core.config import ConfigManager
+            cfg_path = ConfigManager.get_instance().get("custom_ffmpeg_path", "")
+            if cfg_path and os.path.exists(cfg_path):
+                cls._custom_ffmpeg = cfg_path
+                return cfg_path
+        except Exception:
+            pass
+
         if cls._cached_ffmpeg and os.path.exists(cls._cached_ffmpeg):
             return cls._cached_ffmpeg
 
@@ -114,6 +164,18 @@ class PathManager:
         """
         Định vị file thực thi ffprobe.exe tương tự như ffmpeg.
         """
+        if cls._custom_ffprobe and os.path.exists(cls._custom_ffprobe):
+            return cls._custom_ffprobe
+
+        try:
+            from core.config import ConfigManager
+            cfg_path = ConfigManager.get_instance().get("custom_ffprobe_path", "")
+            if cfg_path and os.path.exists(cfg_path):
+                cls._custom_ffprobe = cfg_path
+                return cfg_path
+        except Exception:
+            pass
+
         if cls._cached_ffprobe and os.path.exists(cls._cached_ffprobe):
             return cls._cached_ffprobe
 

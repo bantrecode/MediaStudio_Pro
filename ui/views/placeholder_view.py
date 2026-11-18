@@ -48,17 +48,19 @@ class PlaceholderView(QWidget):
         # Đường kẻ
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
-        sep.setStyleSheet("color: #2D333E; margin: 8px 0;")
+        sep.setProperty("class", "separator")
+        sep.setStyleSheet("margin: 8px 0;")
         card_layout.addWidget(sep)
 
         # Danh sách tính năng sẽ có
         lbl_feat_title = QLabel("Tính Năng Sẽ Tích Hợp:")
-        lbl_feat_title.setStyleSheet("font-weight: 600; color: #818CF8;")
+        lbl_feat_title.setProperty("class", "label-accent")
         card_layout.addWidget(lbl_feat_title)
 
         for feat in self.features:
             lbl_item = QLabel(f"•  {feat}")
-            lbl_item.setStyleSheet("color: #CBD5E1; padding-left: 8px;")
+            lbl_item.setProperty("class", "label-muted")
+            lbl_item.setStyleSheet("padding-left: 8px;")
             card_layout.addWidget(lbl_item)
 
         card_layout.addStretch()

@@ -19,12 +19,13 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QComboBox, QSlider, QRadioButton, QButtonGroup, QFrame, QFileDialog,
     QMessageBox, QScrollArea, QTableWidget, QTableWidgetItem, QHeaderView,
-    QAbstractItemView, QSpinBox, QTabWidget
+    QAbstractItemView, QSpinBox, QTabWidget, QStackedWidget
 )
 from PySide6.QtCore import Qt, QUrl, Slot, QTime
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
 
+from ui.components.empty_state import EmptyStateWidget
 from core.cutter_engine import CutterEngine
 from core.ffmpeg_runner import FFmpegRunner
 from core.system import format_bytes, clean_unicode_filename
@@ -42,6 +43,7 @@ class CutterWidget(QWidget):
         self.current_video_path: Optional[str] = None
         self.current_duration: float = 0.0
         self.multi_segments: List[Dict[str, Any]] = []
+        self._is_two_cols: Optional[bool] = None
 
         # Trình phát Media Player
         self.player = QMediaPlayer(self)
@@ -49,22 +51,34 @@ class CutterWidget(QWidget):
         self.player.setAudioOutput(self.audio_output)
 
         self.setAcceptDrops(True)
+        self.setFocusPolicy(Qt.StrongFocus)
         self._setup_ui()
         self._connect_player_signals()
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(18, 16, 18, 16)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
 
-        container = QWidget()
-        container_layout = QVBoxLayout(container)
-        container_layout.setContentsMargins(0, 0, 0, 0)
-        container_layout.setSpacing(14)
+        # Vỏ bọc căn giữa
+        outer_container = QWidget()
+        outer_layout = QHBoxLayout(outer_container)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        self.content_container = QWidget()
+        self.content_container.setMaximumWidth(1100)
+        self.container_layout = QVBoxLayout(self.content_container)
+        self.container_layout.setContentsMargins(18, 16, 18, 16)
+        self.container_layout.setSpacing(14)
+
+        outer_layout.addStretch(1)
+        outer_layout.addWidget(self.content_container, 0)
+        outer_layout.addStretch(1)
 
         # 1. Header
         header = QHBoxLayout()
@@ -72,12 +86,47 @@ class CutterWidget(QWidget):
         lbl_title.setProperty("class", "heading")
         header.addWidget(lbl_title)
         header.addStretch()
-        container_layout.addLayout(header)
+        self.container_layout.addLayout(header)
+
+        # Khung chứa động 1 cột vs 2 cột
+        self.body_widget = QWidget()
+        self.body_layout = QVBoxLayout(self.body_widget)
+        self.body_layout.setContentsMargins(0, 0, 0, 0)
+        self.body_layout.setSpacing(14)
+        self.container_layout.addWidget(self.body_widget)
+
+        # Container 1 cột
+        self.col1_widget = QWidget()
+        self.col1_layout = QVBoxLayout(self.col1_widget)
+        self.col1_layout.setContentsMargins(0, 0, 0, 0)
+        self.col1_layout.setSpacing(14)
+
+        # Container 2 cột (rộng >= 1200px)
+        self.col2_widget = QWidget()
+        self.col2_layout = QHBoxLayout(self.col2_widget)
+        self.col2_layout.setContentsMargins(0, 0, 0, 0)
+        self.col2_layout.setSpacing(16)
+
+        self.left_box = QWidget()
+        self.left_layout = QVBoxLayout(self.left_box)
+        self.left_layout.setContentsMargins(0, 0, 0, 0)
+        self.left_layout.setSpacing(14)
+
+        self.right_box = QWidget()
+        self.right_layout = QVBoxLayout(self.right_box)
+        self.right_layout.setContentsMargins(0, 0, 0, 0)
+        self.right_layout.setSpacing(14)
+
+        self.col2_layout.addWidget(self.left_box, 6)
+        self.col2_layout.addWidget(self.right_box, 5)
+
+        self.body_layout.addWidget(self.col1_widget)
+        self.body_layout.addWidget(self.col2_widget)
 
         # 2. Card Chọn Video & Trình phát Player
-        card_player = QFrame()
-        card_player.setProperty("class", "card")
-        player_layout = QVBoxLayout(card_player)
+        self.card_player = QFrame()
+        self.card_player.setProperty("class", "card")
+        player_layout = QVBoxLayout(self.card_player)
         player_layout.setSpacing(10)
 
         # Thanh chọn file
@@ -108,7 +157,8 @@ class CutterWidget(QWidget):
         self.slider_seek.sliderMoved.connect(self._on_seek_moved)
 
         self.lbl_time = QLabel("00:00:00 / 00:00:00")
-        self.lbl_time.setStyleSheet("font-family: Consolas, monospace; color: #94A3B8; font-size: 13px;")
+        self.lbl_time.setProperty("class", "label-muted")
+        self.lbl_time.setStyleSheet("font-family: Consolas, monospace; font-size: 13px;")
 
         seek_row.addWidget(self.slider_seek)
         seek_row.addWidget(self.lbl_time)
@@ -125,42 +175,36 @@ class CutterWidget(QWidget):
         self.btn_stop.setProperty("class", "btn-secondary")
         self.btn_stop.clicked.connect(self._stop_playback)
 
-        btn_set_start = QPushButton("📍 [ Đặt Điểm Đầu (Start)")
+        btn_set_start = QPushButton("📍 [ Đặt Đầu")
         btn_set_start.setProperty("class", "btn-secondary")
         btn_set_start.setToolTip("Lấy vị trí hiện tại của video làm mốc bắt đầu cắt")
         btn_set_start.clicked.connect(self._set_current_as_start)
 
-        btn_set_end = QPushButton("📍 ] Đặt Điểm Cuối (End)")
+        btn_set_end = QPushButton("📍 ] Đặt Cuối")
         btn_set_end.setProperty("class", "btn-secondary")
         btn_set_end.setToolTip("Lấy vị trí hiện tại của video làm mốc kết thúc cắt")
         btn_set_end.clicked.connect(self._set_current_as_end)
 
-        btn_preview_cut = QPushButton("👁️ Xem Thử Đoạn Này")
+        btn_preview_cut = QPushButton("👁️ Xem Thử")
         btn_preview_cut.setProperty("class", "btn-secondary")
         btn_preview_cut.clicked.connect(self._preview_cut_segment)
 
         ctrl_row.addWidget(self.btn_play)
         ctrl_row.addWidget(self.btn_stop)
-        ctrl_row.addSpacing(12)
+        ctrl_row.addSpacing(8)
         ctrl_row.addWidget(btn_set_start)
         ctrl_row.addWidget(btn_set_end)
         ctrl_row.addWidget(btn_preview_cut)
         ctrl_row.addStretch()
         player_layout.addLayout(ctrl_row)
 
-        container_layout.addWidget(card_player)
-
         # 3. Card Phân Đoạn Cắt (Single Cut vs Auto-Split Tabs)
-        card_segments = QFrame()
-        card_segments.setProperty("class", "card")
-        seg_layout = QVBoxLayout(card_segments)
+        self.card_segments = QFrame()
+        self.card_segments.setProperty("class", "card")
+        seg_layout = QVBoxLayout(self.card_segments)
         seg_layout.setSpacing(12)
 
         self.tab_cut_mode = QTabWidget()
-        self.tab_cut_mode.setStyleSheet("""
-            QTabBar::tab { background: #121418; color: #94A3B8; padding: 6px 16px; font-weight: bold; }
-            QTabBar::tab:selected { background: #181B20; color: #38BDF8; border-top: 2px solid #38BDF8; }
-        """)
 
         # Tab 1: Cắt một đoạn đơn lẻ
         tab_single = QWidget()
@@ -189,7 +233,8 @@ class CutterWidget(QWidget):
         vbox_dur = QVBoxLayout()
         vbox_dur.addWidget(QLabel("Thời lượng đoạn cắt:"))
         self.lbl_cut_dur = QLabel("00:00:00")
-        self.lbl_cut_dur.setStyleSheet("font-family: Consolas, monospace; font-size: 14px; font-weight: bold; color: #34D399; margin-top: 6px;")
+        self.lbl_cut_dur.setProperty("class", "label-success")
+        self.lbl_cut_dur.setStyleSheet("font-family: Consolas, monospace; font-size: 14px; font-weight: bold; margin-top: 6px;")
         vbox_dur.addWidget(self.lbl_cut_dur)
         time_inputs_row.addLayout(vbox_dur)
 
@@ -209,11 +254,11 @@ class CutterWidget(QWidget):
 
         # Toolbar Auto-Split
         auto_split_row = QHBoxLayout()
-        auto_split_row.addWidget(QLabel("⚡ Tự động chia nhỏ theo thời lượng:"))
+        auto_split_row.addWidget(QLabel("⚡ Tự động chia nhỏ:"))
 
         self.cbo_preset_split = QComboBox()
-        self.cbo_preset_split.addItem("60 giây (TikTok / YouTube Shorts)", 60.0)
-        self.cbo_preset_split.addItem("90 giây (Instagram / Reels)", 90.0)
+        self.cbo_preset_split.addItem("60 giây (TikTok/Shorts)", 60.0)
+        self.cbo_preset_split.addItem("90 giây (Instagram Reels)", 90.0)
         self.cbo_preset_split.addItem("180 giây (3 phút)", 180.0)
         self.cbo_preset_split.addItem("300 giây (5 phút)", 300.0)
         self.cbo_preset_split.addItem("Tùy chỉnh...", "custom")
@@ -227,12 +272,12 @@ class CutterWidget(QWidget):
         self.spin_custom_sec.setVisible(False)
         auto_split_row.addWidget(self.spin_custom_sec)
 
-        btn_run_auto_split = QPushButton("🚀 Tự Động Chia Phân Đoạn")
+        btn_run_auto_split = QPushButton("🚀 Chia Đoạn")
         btn_run_auto_split.setProperty("class", "btn-secondary")
         btn_run_auto_split.clicked.connect(self._generate_auto_splits)
         auto_split_row.addWidget(btn_run_auto_split)
 
-        btn_clear_segs = QPushButton("🧹 Xóa Hết Đoạn")
+        btn_clear_segs = QPushButton("🧹 Xóa Hết")
         btn_clear_segs.setProperty("class", "btn-secondary")
         btn_clear_segs.clicked.connect(self._clear_segments)
         auto_split_row.addWidget(btn_clear_segs)
@@ -240,7 +285,7 @@ class CutterWidget(QWidget):
         auto_split_row.addStretch()
         multi_layout.addLayout(auto_split_row)
 
-        # Bảng danh sách phân đoạn
+        # Bảng danh sách phân đoạn kèm Empty State
         self.table_segs = QTableWidget(0, 5)
         self.table_segs.setHorizontalHeaderLabels([
             "#", "Tên Phân Đoạn", "Bắt Đầu", "Kết Thúc", "Thời Lượng"
@@ -248,19 +293,31 @@ class CutterWidget(QWidget):
         self.table_segs.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.table_segs.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.table_segs.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table_segs.setMinimumHeight(150)
-        self.table_segs.setMaximumHeight(220)
-        multi_layout.addWidget(self.table_segs)
+        self.table_segs.setMinimumHeight(130)
+        self.table_segs.setMaximumHeight(200)
 
+        self.segs_empty_state = EmptyStateWidget(
+            icon="⚡",
+            title="Chưa có phân đoạn nào trong danh sách",
+            subtitle="Bấm 'Chia Đoạn' hoặc 'Thêm Đoạn Này' để tạo phân đoạn cắt",
+            action_text=""
+        )
+
+        self.segs_stack = QStackedWidget()
+        self.segs_stack.setMinimumHeight(130)
+        self.segs_stack.setMaximumHeight(200)
+        self.segs_stack.addWidget(self.segs_empty_state)
+        self.segs_stack.addWidget(self.table_segs)
+        self.segs_stack.setCurrentIndex(0)
+
+        multi_layout.addWidget(self.segs_stack)
         self.tab_cut_mode.addTab(tab_multi, "⚡ Tự Động Chia Nhỏ / Cắt Hàng Loạt")
-
         seg_layout.addWidget(self.tab_cut_mode)
-        container_layout.addWidget(card_segments)
 
         # 4. Card Chế độ cắt & Tăng tốc
-        card_mode = QFrame()
-        card_mode.setProperty("class", "card")
-        mode_layout = QVBoxLayout(card_mode)
+        self.card_mode = QFrame()
+        self.card_mode.setProperty("class", "card")
+        mode_layout = QVBoxLayout(self.card_mode)
         mode_layout.setSpacing(10)
 
         lbl_mode_title = QLabel("⚙️ Chế Độ Cắt & Tối Ưu")
@@ -268,11 +325,11 @@ class CutterWidget(QWidget):
         mode_layout.addWidget(lbl_mode_title)
 
         mode_btn_row = QHBoxLayout()
-        self.rad_copy = QRadioButton("⚡ Cắt Nhanh (Stream Copy) - Siêu tốc, giữ 100% chất lượng gốc")
+        self.rad_copy = QRadioButton("⚡ Cắt Nhanh (Stream Copy) - Siêu tốc, giữ 100% chất lượng")
         self.rad_copy.setChecked(True)
         self.rad_copy.toggled.connect(self._on_cut_mode_toggled)
 
-        self.rad_reencode = QRadioButton("🎯 Cắt Chính Xác (Re-encode) - Chuẩn xác từng khung hình")
+        self.rad_reencode = QRadioButton("🎯 Cắt Chính Xác (Re-encode) - Chuẩn từng khung hình")
         self.rad_reencode.toggled.connect(self._on_cut_mode_toggled)
 
         mode_group = QButtonGroup(self)
@@ -285,7 +342,8 @@ class CutterWidget(QWidget):
 
         # Cảnh báo Keyframe khi chọn Stream Copy
         self.lbl_keyframe_warn = QLabel(CutterEngine.get_keyframe_warning())
-        self.lbl_keyframe_warn.setStyleSheet("color: #FBBF24; font-size: 13px; padding: 4px 0;")
+        self.lbl_keyframe_warn.setProperty("class", "label-warning")
+        self.lbl_keyframe_warn.setStyleSheet("font-size: 13px; padding: 4px 0;")
         self.lbl_keyframe_warn.setWordWrap(True)
         mode_layout.addWidget(self.lbl_keyframe_warn)
 
@@ -318,12 +376,10 @@ class CutterWidget(QWidget):
         mode_layout.addWidget(self.reencode_options)
         self.reencode_options.setVisible(False)
 
-        container_layout.addWidget(card_mode)
-
         # 5. Card Thư mục xuất & Bắt đầu
-        card_out = QFrame()
-        card_out.setProperty("class", "card")
-        out_layout = QVBoxLayout(card_out)
+        self.card_out = QFrame()
+        self.card_out.setProperty("class", "card")
+        out_layout = QVBoxLayout(self.card_out)
         out_layout.setSpacing(10)
 
         out_row = QHBoxLayout()
@@ -355,11 +411,49 @@ class CutterWidget(QWidget):
         self.btn_submit.clicked.connect(self._submit_to_queue)
         out_layout.addWidget(self.btn_submit)
 
-        container_layout.addWidget(card_out)
-        container_layout.addStretch()
+        # Áp dụng bố cục mặc định 1 cột
+        self._apply_columns_mode(False)
 
-        scroll.setWidget(container)
+        scroll.setWidget(outer_container)
         main_layout.addWidget(scroll)
+
+    def _apply_columns_mode(self, two_cols: bool):
+        """Chuyển đổi linh hoạt giữa bố cục 1 cột (< 1200px) và 2 cột (>= 1200px)."""
+        if self._is_two_cols == two_cols:
+            return
+        self._is_two_cols = two_cols
+
+        self.card_player.setParent(None)
+        self.card_segments.setParent(None)
+        self.card_mode.setParent(None)
+        self.card_out.setParent(None)
+
+        if two_cols:
+            self.col1_widget.setVisible(False)
+            self.col2_widget.setVisible(True)
+            self.content_container.setMaximumWidth(1500)
+
+            self.left_layout.addWidget(self.card_player)
+            self.left_layout.addStretch()
+
+            self.right_layout.addWidget(self.card_segments)
+            self.right_layout.addWidget(self.card_mode)
+            self.right_layout.addWidget(self.card_out)
+        else:
+            self.col2_widget.setVisible(False)
+            self.col1_widget.setVisible(True)
+            self.content_container.setMaximumWidth(1100)
+
+            self.col1_layout.addWidget(self.card_player)
+            self.col1_layout.addWidget(self.card_segments)
+            self.col1_layout.addWidget(self.card_mode)
+            self.col1_layout.addWidget(self.card_out)
+
+    def resizeEvent(self, event):
+        """Lắng nghe sự kiện co giãn cửa sổ để tự động chuyển bố cục 1 cột <-> 2 cột."""
+        super().resizeEvent(event)
+        w = event.size().width()
+        self._apply_columns_mode(w >= 1200)
 
     # ==========================
     # Player & Media Signals
@@ -524,6 +618,9 @@ class CutterWidget(QWidget):
         self.tab_cut_mode.setCurrentIndex(1)
 
     def _refresh_segments_table(self):
+        if hasattr(self, "segs_stack"):
+            self.segs_stack.setCurrentIndex(1 if len(self.multi_segments) > 0 else 0)
+
         self.table_segs.setRowCount(len(self.multi_segments))
         for row, seg in enumerate(self.multi_segments):
             item_idx = QTableWidgetItem(str(row + 1))
@@ -548,6 +645,8 @@ class CutterWidget(QWidget):
     def _clear_segments(self):
         self.multi_segments.clear()
         self._refresh_segments_table()
+        if hasattr(self, "segs_stack"):
+            self.segs_stack.setCurrentIndex(0)
 
     # ==========================
     # Settings & Submit
@@ -646,4 +745,45 @@ class CutterWidget(QWidget):
             f"Chế độ: {'⚡ Cắt Nhanh (Stream Copy)' if is_copy else '🎯 Cắt Chính Xác (Re-encode)'}\n"
             f"Theo dõi tiến trình ở bảng Hàng Đợi bên dưới."
         )
+
+    def keyPressEvent(self, event):
+        """Xử lý phím tắt cho Cutter: Space, [, ], Left, Right, Shift+Left, Shift+Right."""
+        from PySide6.QtWidgets import QApplication, QLineEdit, QTextEdit, QPlainTextEdit
+        focus_w = QApplication.focusWidget()
+        if isinstance(focus_w, (QLineEdit, QTextEdit, QPlainTextEdit)) and focus_w.isVisible():
+            super().keyPressEvent(event)
+            return
+
+        key = event.key()
+        modifiers = event.modifiers()
+
+        if key == Qt.Key_Space:
+            self._toggle_playback()
+            event.accept()
+            return
+        elif key == Qt.Key_BracketLeft:  # '['
+            self._set_current_as_start()
+            event.accept()
+            return
+        elif key == Qt.Key_BracketRight:  # ']'
+            self._set_current_as_end()
+            event.accept()
+            return
+        elif key == Qt.Key_Left:
+            # Shift + Left = lùi 1 frame (~40ms), Left = lùi 1 giây (1000ms)
+            step = 40 if (modifiers & Qt.ShiftModifier) else 1000
+            new_pos = max(0, self.player.position() - step)
+            self.player.setPosition(new_pos)
+            event.accept()
+            return
+        elif key == Qt.Key_Right:
+            # Shift + Right = tiến 1 frame (~40ms), Right = tiến 1 giây (1000ms)
+            step = 40 if (modifiers & Qt.ShiftModifier) else 1000
+            max_ms = int(self.current_duration * 1000) if self.current_duration > 0 else self.player.position() + step
+            new_pos = min(max_ms, self.player.position() + step)
+            self.player.setPosition(new_pos)
+            event.accept()
+            return
+
+        super().keyPressEvent(event)
 

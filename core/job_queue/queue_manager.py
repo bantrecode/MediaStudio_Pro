@@ -65,15 +65,17 @@ class QueueManager:
 
         logger.info(f"Đã thêm Job vào hàng đợi: [{job.id}] {job.name} (Module: {job.module_id})")
 
-        # Ghi nhận vào SQLite
+        # Ghi nhận vào SQLite (Lịch sử & Hàng đợi bền vững)
         try:
-            HistoryDB.get_instance().record_job(
+            hdb = HistoryDB.get_instance()
+            hdb.record_job(
                 job_id=job.id,
                 module_id=job.module_id,
                 name=job.name,
                 status=job.status.value,
                 output_path=job.output_path
             )
+            hdb.save_queue_job(job.to_dict(), priority=len(self.pending_queue))
         except Exception:
             pass
 
@@ -190,11 +192,85 @@ class QueueManager:
     def _get_running_count(self) -> int:
         return sum(1 for j in self.jobs.values() if j.status == JobStatus.RUNNING)
 
+    def load_persisted_jobs(self):
+        """Khôi phục các job dang dở từ SQLite khi khởi động ứng dụng."""
+        try:
+            persisted = HistoryDB.get_instance().get_persisted_queue_jobs()
+            with self._lock:
+                for item in persisted:
+                    st_str = item.get("status", JobStatus.PENDING.value)
+                    status = JobStatus(st_str) if st_str in [s.value for s in JobStatus] else JobStatus.PENDING
+
+                    # Nếu job đang RUNNING lúc app tắt -> chuyển thành PAUSED để người dùng bấm chạy tiếp
+                    if status == JobStatus.RUNNING:
+                        status = JobStatus.PAUSED
+
+                    job = Job(
+                        module_id=item["module_id"],
+                        name=item["name"],
+                        params=item.get("params", {}),
+                        id=item["id"],
+                        status=status,
+                        progress=item.get("progress", 0),
+                        speed=item.get("speed", "--"),
+                        eta=item.get("eta", "--:--"),
+                        error_message=item.get("error_message", ""),
+                        output_path=item.get("output_path", ""),
+                        created_at=item.get("created_at", datetime.now().isoformat()),
+                        finished_at=item.get("finished_at", "")
+                    )
+                    job.append_log("Khôi phục tác vụ từ phiên làm việc trước.")
+                    self.jobs[job.id] = job
+                    if status == JobStatus.PENDING:
+                        self.pending_queue.append(job.id)
+
+                    if self.on_job_added:
+                        self.on_job_added(job)
+        except Exception as e:
+            get_logger().error(f"Lỗi khi khôi phục hàng đợi từ SQLite: {e}")
+
+    def reorder_jobs(self, job_ids: List[str]):
+        """Cập nhật thứ tự các job đang chờ trong hàng đợi."""
+        with self._lock:
+            new_pending = [jid for jid in job_ids if jid in self.pending_queue]
+            for jid in self.pending_queue:
+                if jid not in new_pending:
+                    new_pending.append(jid)
+            self.pending_queue = new_pending
+            try:
+                HistoryDB.get_instance().update_queue_order(self.pending_queue)
+            except Exception:
+                pass
+
+    def clear_finished_jobs(self):
+        """Xóa các job đã hoàn thành, lỗi hoặc bị hủy."""
+        with self._lock:
+            to_remove = [
+                jid for jid, j in self.jobs.items()
+                if j.status in [JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED]
+            ]
+            for jid in to_remove:
+                del self.jobs[jid]
+            try:
+                HistoryDB.get_instance().clear_finished_jobs()
+            except Exception:
+                pass
+
     def _update_db_status(self, job: Job):
         try:
-            HistoryDB.get_instance().update_job_status(
+            hdb = HistoryDB.get_instance()
+            hdb.update_job_status(
                 job_id=job.id,
                 status=job.status.value,
+                error_message=job.error_message,
+                output_path=job.output_path
+            )
+            hdb.update_queue_job_status(
+                job_id=job.id,
+                status=job.status.value,
+                progress=job.progress,
+                speed=job.speed,
+                eta=job.eta,
                 error_message=job.error_message,
                 output_path=job.output_path
             )

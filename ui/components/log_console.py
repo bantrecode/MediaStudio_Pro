@@ -13,6 +13,7 @@ from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QTextCursor
 from core.logger import export_logs
 from core.system import get_logs_dir
+from ui.theme import ThemeManager
 
 
 class LogConsole(QWidget):
@@ -31,7 +32,8 @@ class LogConsole(QWidget):
         header = QHBoxLayout()
 
         lbl_title = QLabel("📋 Nhật Ký Hệ Thống (Console Logs)")
-        lbl_title.setStyleSheet("font-weight: 600; color: #CBD5E1; font-size: 12px;")
+        lbl_title.setProperty("class", "heading")
+        lbl_title.setStyleSheet("font-size: 12px;")
 
         self.btn_export = QPushButton("📤 Xuất Log Báo Lỗi")
         self.btn_export.setProperty("class", "btn-secondary")
@@ -87,18 +89,16 @@ class LogConsole(QWidget):
         elif "[WARNING]" in upper_msg:
             level = "WARNING"
 
-        colors = {
-            "INFO": "#94A3B8",
-            "SUCCESS": "#34D399",
-            "WARNING": "#FBBF24",
-            "ERROR": "#F87171"
-        }
-        color = colors.get(level.upper(), "#CBD5E1")
+        tm = ThemeManager.get_instance()
+        tokens = tm.get_tokens()
+        color = tm.get_log_color(level)
+        time_color = tokens["text_dim"]
+        msg_color = tokens["text_main"]
 
         html_line = (
-            f"<span style='color: #64748B;'>[{now}]</span> "
+            f"<span style='color: {time_color};'>[{now}]</span> "
             f"<span style='color: {color}; font-weight: 600;'>[{level.upper()}]</span> "
-            f"<span style='color: #E2E8F0;'>{message}</span>"
+            f"<span style='color: {msg_color};'>{message}</span>"
         )
         self.log_text.append(html_line)
         self.log_text.moveCursor(QTextCursor.End)

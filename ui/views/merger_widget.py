@@ -17,9 +17,10 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QComboBox, QSlider, QCheckBox, QFrame, QFileDialog, QMessageBox,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
-    QScrollArea
+    QScrollArea, QStackedWidget
 )
 from PySide6.QtCore import Qt, Slot, QThread, Signal
+from ui.components.empty_state import EmptyStateWidget
 from core.merger_engine import MergerEngine
 from core.ffmpeg_runner import FFmpegRunner
 from core.system import format_bytes, clean_unicode_filename
@@ -72,18 +73,29 @@ class MergerWidget(QWidget):
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(18, 16, 18, 16)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
         # Scroll Area bao bọc toàn bộ nội dung
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
 
+        # Vỏ bọc căn giữa với max-width ~1100px
+        outer_container = QWidget()
+        outer_layout = QHBoxLayout(outer_container)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
         container = QWidget()
+        container.setMaximumWidth(1100)
         container_layout = QVBoxLayout(container)
-        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setContentsMargins(18, 16, 18, 16)
         container_layout.setSpacing(14)
+
+        outer_layout.addStretch(1)
+        outer_layout.addWidget(container, 0)
+        outer_layout.addStretch(1)
 
         # 1. Header
         header = QHBoxLayout()
@@ -135,7 +147,7 @@ class MergerWidget(QWidget):
         tb_layout.addStretch()
         list_layout.addLayout(tb_layout)
 
-        # Bảng danh sách video
+        # Bảng danh sách video kèm Empty State
         self.table_videos = QTableWidget(0, 7)
         self.table_videos.setHorizontalHeaderLabels([
             "#", "Tên Video", "Thời Lượng", "Độ Phân Giải", "FPS", "Codec", "Âm Thanh"
@@ -144,13 +156,30 @@ class MergerWidget(QWidget):
         self.table_videos.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.table_videos.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_videos.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.table_videos.setMinimumHeight(180)
+        self.table_videos.setMinimumHeight(150)
         self.table_videos.setMaximumHeight(260)
-        list_layout.addWidget(self.table_videos)
+
+        self.empty_state = EmptyStateWidget(
+            icon="🔗",
+            title="Chưa có video nào để ghép",
+            subtitle="Kéo thả từ 2 video trở lên vào đây hoặc bấm nút bên dưới",
+            action_text="📁 Thêm Video Ghép...",
+            action_callback=self._add_files
+        )
+
+        self.table_stack = QStackedWidget()
+        self.table_stack.setMinimumHeight(150)
+        self.table_stack.setMaximumHeight(260)
+        self.table_stack.addWidget(self.empty_state)
+        self.table_stack.addWidget(self.table_videos)
+        self.table_stack.setCurrentIndex(0)
+
+        list_layout.addWidget(self.table_stack)
 
         # Banner trạng thái tương thích
         self.lbl_compat_status = QLabel("💡 Kéo thả hoặc bấm 'Thêm Video' để bắt đầu. Cần tối thiểu 2 video để ghép.")
-        self.lbl_compat_status.setStyleSheet("color: #94A3B8; font-size: 13px; padding: 4px 0;")
+        self.lbl_compat_status.setProperty("class", "label-muted")
+        self.lbl_compat_status.setStyleSheet("font-size: 13px; padding: 4px 0;")
         self.lbl_compat_status.setWordWrap(True)
         list_layout.addWidget(self.lbl_compat_status)
 
@@ -251,7 +280,8 @@ class MergerWidget(QWidget):
         bgm_layout.setSpacing(10)
 
         self.chk_enable_bgm = QCheckBox("🎵 Lồng Nhạc Nền (Background Music - BGM)")
-        self.chk_enable_bgm.setStyleSheet("font-weight: 600; font-size: 14px; color: #38BDF8;")
+        self.chk_enable_bgm.setProperty("class", "label-accent")
+        self.chk_enable_bgm.setStyleSheet("font-weight: 600; font-size: 14px;")
         self.chk_enable_bgm.toggled.connect(self._toggle_bgm_controls)
         bgm_layout.addWidget(self.chk_enable_bgm)
 
@@ -354,7 +384,7 @@ class MergerWidget(QWidget):
         container_layout.addWidget(card_out)
         container_layout.addStretch()
 
-        scroll.setWidget(container)
+        scroll.setWidget(outer_container)
         main_layout.addWidget(scroll)
 
     # ==========================
@@ -425,6 +455,9 @@ class MergerWidget(QWidget):
         self._check_and_update_compatibility()
 
     def _refresh_table(self):
+        if hasattr(self, "table_stack"):
+            self.table_stack.setCurrentIndex(1 if len(self.video_list) > 0 else 0)
+
         self.table_videos.setRowCount(len(self.video_list))
         for row, info in enumerate(self.video_list):
             item_idx = QTableWidgetItem(str(row + 1))
@@ -496,7 +529,9 @@ class MergerWidget(QWidget):
         n = len(self.video_list)
         if n < 2:
             self.lbl_compat_status.setText("💡 Cần tối thiểu 2 video để ghép. Hãy thêm video vào danh sách.")
-            self.lbl_compat_status.setStyleSheet("color: #94A3B8; font-size: 13px; padding: 4px 0;")
+            self.lbl_compat_status.setProperty("class", "label-muted")
+            self.lbl_compat_status.style().unpolish(self.lbl_compat_status)
+            self.lbl_compat_status.style().polish(self.lbl_compat_status)
             return
 
         total_dur = sum(v.get("duration", 0.0) for v in self.video_list)
@@ -509,14 +544,17 @@ class MergerWidget(QWidget):
                 f"✅ Đã chọn {n} video (Tổng thời lượng: ~{dur_str}).\n"
                 f"⚡ {msg}"
             )
-            self.lbl_compat_status.setStyleSheet("color: #34D399; font-weight: 500; font-size: 13px; padding: 4px 0;")
+            self.lbl_compat_status.setProperty("class", "label-success")
         else:
             self.lbl_compat_status.setText(
                 f"ℹ️ Đã chọn {n} video (Tổng thời lượng: ~{dur_str}).\n"
                 f"🔄 {msg}\n"
                 f"App sẽ tự động áp dụng chế độ Ghép Chuẩn Hóa (Mã hóa lại) để video đồng bộ hoàn hảo."
             )
-            self.lbl_compat_status.setStyleSheet("color: #FBBF24; font-size: 13px; padding: 4px 0;")
+            self.lbl_compat_status.setProperty("class", "label-warning")
+
+        self.lbl_compat_status.style().unpolish(self.lbl_compat_status)
+        self.lbl_compat_status.style().polish(self.lbl_compat_status)
 
     def _on_crf_changed(self, val: int):
         desc = "Cực nét" if val <= 19 else ("Nét cao" if val <= 22 else ("Cân bằng tốt" if val <= 25 else "Dung lượng nhẹ"))

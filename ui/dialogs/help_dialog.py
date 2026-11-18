@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QTabWidget, QTextBrowser, QFrame
 )
 from PySide6.QtCore import Qt
+from ui.theme import ThemeManager
 
 
 class HelpDialog(QDialog):
@@ -31,9 +32,9 @@ class HelpDialog(QDialog):
         title_box = QVBoxLayout()
         title_box.setSpacing(2)
         lbl_title = QLabel("Hướng Dẫn Sử Dụng & Sổ Tay Vận Hành")
-        lbl_title.setStyleSheet("font-size: 17px; font-weight: bold; color: #FFFFFF;")
+        lbl_title.setProperty("class", "heading")
         lbl_sub = QLabel("Cẩm nang nhanh cho người mới bắt đầu và các lưu ý quan trọng khi xử lý video")
-        lbl_sub.setStyleSheet("font-size: 11px; color: #94A3B8;")
+        lbl_sub.setProperty("class", "label-muted")
         title_box.addWidget(lbl_title)
         title_box.addWidget(lbl_sub)
 
@@ -44,11 +45,6 @@ class HelpDialog(QDialog):
 
         # Tabs hướng dẫn
         tabs = QTabWidget()
-        tabs.setStyleSheet("""
-            QTabWidget::pane { border: 1px solid #2B303C; border-radius: 8px; background: #121418; }
-            QTabBar::tab { background: #181B20; color: #94A3B8; padding: 7px 16px; border-top-left-radius: 6px; border-top-right-radius: 6px; margin-right: 4px; font-weight: 500; font-size: 12px; }
-            QTabBar::tab:selected { background: #121418; color: #818CF8; font-weight: bold; border: 1px solid #2B303C; border-bottom: none; }
-        """)
 
         # Tab 1: Bắt đầu nhanh
         tabs.addTab(self._create_quickstart_tab(), "🚀 Bắt Đầu Nhanh")
@@ -66,7 +62,7 @@ class HelpDialog(QDialog):
         # Footer
         footer = QHBoxLayout()
         lbl_tip = QLabel("💡 Mẹo: Kéo thả file video trực tiếp vào cửa sổ để bắt đầu xử lý nhanh chóng.")
-        lbl_tip.setStyleSheet("font-size: 11px; color: #64748B; font-style: italic;")
+        lbl_tip.setProperty("class", "label-muted")
         footer.addWidget(lbl_tip)
         footer.addStretch()
 
@@ -81,31 +77,33 @@ class HelpDialog(QDialog):
     def _create_browser(self, html_content: str) -> QTextBrowser:
         browser = QTextBrowser()
         browser.setOpenExternalLinks(True)
-        browser.setStyleSheet("""
-            QTextBrowser {
-                background-color: #121418;
-                border: none;
+        tokens = ThemeManager.get_instance().get_tokens()
+        browser.setStyleSheet(f"""
+            QTextBrowser {{
+                background-color: {tokens["bg_surface"]};
+                border: 1px solid {tokens["border"]};
+                border-radius: 8px;
                 padding: 14px;
-                color: #CBD5E1;
+                color: {tokens["text_main"]};
                 font-size: 12px;
                 line-height: 1.6;
-            }
+            }}
         """)
-        css = """
+        css = f"""
         <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #CBD5E1; line-height: 1.6; }
-            h3 { color: #818CF8; margin-top: 0; font-size: 15px; border-bottom: 1px solid #23272F; padding-bottom: 6px; }
-            h4 { color: #F8FAFC; margin-bottom: 4px; font-size: 13px; }
-            p { margin-top: 4px; margin-bottom: 10px; }
-            ul, ol { margin-top: 4px; margin-bottom: 12px; padding-left: 20px; }
-            li { margin-bottom: 6px; }
-            b { color: #FFFFFF; }
-            .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; background: #23272F; color: #818CF8; }
-            .step-box { background: #181B20; border-left: 3px solid #6366F1; padding: 8px 12px; margin-bottom: 10px; border-radius: 0 6px 6px 0; }
-            .warn-box { background: #2A1B12; border-left: 3px solid #F59E0B; padding: 8px 12px; margin-bottom: 10px; border-radius: 0 6px 6px 0; color: #FDE68A; }
-            .danger-box { background: #2D1418; border-left: 3px solid #EF4444; padding: 8px 12px; margin-bottom: 10px; border-radius: 0 6px 6px 0; color: #FECACA; }
-            .success-box { background: #13271D; border-left: 3px solid #10B981; padding: 8px 12px; margin-bottom: 10px; border-radius: 0 6px 6px 0; color: #A7F3D0; }
-            code { background: #1E232B; padding: 2px 5px; border-radius: 3px; font-family: Consolas, monospace; color: #38BDF8; font-size: 11px; }
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: {tokens["text_main"]}; line-height: 1.6; }}
+            h3 {{ color: {tokens["accent"]}; margin-top: 0; font-size: 15px; border-bottom: 1px solid {tokens["border"]}; padding-bottom: 6px; }}
+            h4 {{ color: {tokens["text_main"]}; margin-bottom: 4px; font-size: 13px; }}
+            p {{ margin-top: 4px; margin-bottom: 10px; }}
+            ul, ol {{ margin-top: 4px; margin-bottom: 12px; padding-left: 20px; }}
+            li {{ margin-bottom: 6px; }}
+            b {{ color: {tokens["text_main"]}; }}
+            .badge {{ display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; background: {tokens["bg_hover"]}; color: {tokens["accent"]}; }}
+            .step-box {{ background: {tokens["bg_card"]}; border-left: 3px solid {tokens["accent"]}; padding: 8px 12px; margin-bottom: 10px; border-radius: 0 6px 6px 0; }}
+            .warn-box {{ background: {tokens["warning_bg"]}; border-left: 3px solid {tokens["warning"]}; padding: 8px 12px; margin-bottom: 10px; border-radius: 0 6px 6px 0; color: {tokens["warning_text"]}; }}
+            .danger-box {{ background: {tokens["danger_bg"]}; border-left: 3px solid {tokens["danger"]}; padding: 8px 12px; margin-bottom: 10px; border-radius: 0 6px 6px 0; color: {tokens["danger_text"]}; }}
+            .success-box {{ background: {tokens["success_bg"]}; border-left: 3px solid {tokens["success"]}; padding: 8px 12px; margin-bottom: 10px; border-radius: 0 6px 6px 0; color: {tokens["success_text"]}; }}
+            code {{ background: {tokens["bg_hover"]}; padding: 2px 5px; border-radius: 3px; font-family: Consolas, monospace; color: {tokens["accent"]}; font-size: 11px; }}
         </style>
         """
         browser.setHtml(css + html_content)

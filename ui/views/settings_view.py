@@ -51,9 +51,10 @@ class SettingsView(QWidget):
         for title, val in infos:
             row = QHBoxLayout()
             lbl_t = QLabel(title)
-            lbl_t.setStyleSheet("color: #94A3B8; font-weight: 500; min-width: 220px;")
+            lbl_t.setProperty("class", "label-muted")
+            lbl_t.setStyleSheet("font-weight: 500; min-width: 220px;")
             lbl_v = QLabel(str(val))
-            lbl_v.setStyleSheet("color: #FFFFFF; font-family: monospace;")
+            lbl_v.setProperty("class", "code-view")
             lbl_v.setTextInteractionFlags(Qt.TextSelectableByMouse)
             row.addWidget(lbl_t)
             row.addWidget(lbl_v)

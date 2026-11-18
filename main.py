@@ -21,6 +21,7 @@ from core.config import ConfigManager
 from core.job_queue.queue_manager import QueueManager
 from ui.bridge import JobQueueBridge
 from ui.main_window import MainWindow
+from ui.theme import ThemeManager
 
 # Các module plugin
 from modules.converter_module import ConverterModule
@@ -74,7 +75,8 @@ def main():
 
     bridge = JobQueueBridge(queue_mgr)
 
-    # 4. Khởi tạo Qt Application
+    # 4. Khởi tạo Qt Application với High-DPI Scaling chuẩn
+    os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
     if hasattr(Qt, "HighDpiScaleFactorRoundingPolicy"):
         QApplication.setHighDpiScaleFactorRoundingPolicy(
             Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
@@ -84,7 +86,8 @@ def main():
     app.setApplicationName("All-in-One Media Studio")
     app.setOrganizationName("MediaStudio")
 
-    load_stylesheet(app)
+    # Khởi tạo ThemeManager (Sáng / Tối / Theo hệ thống)
+    ThemeManager.get_instance().init_app(app)
 
     # 5. Khởi chạy Cửa sổ Chính
     window = MainWindow(modules, bridge)

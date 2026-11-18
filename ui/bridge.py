@@ -46,6 +46,12 @@ class JobQueueBridge(QObject):
     def retry_job(self, job_id: str) -> bool:
         return self.queue_manager.retry(job_id)
 
+    def reorder_jobs(self, job_ids: list) -> None:
+        self.queue_manager.reorder_jobs(job_ids)
+
+    def clear_finished_jobs(self) -> None:
+        self.queue_manager.clear_finished_jobs()
+
     def get_all_jobs(self):
         return self.queue_manager.get_all_jobs()
 

@@ -158,6 +158,26 @@ class YtDlpRunner:
         return True, "Thành công"
 
     @staticmethod
+    def check_latest_version() -> Tuple[bool, str, str]:
+        """Kiểm tra phiên bản mới nhất trên GitHub API: (success, tag_name, download_url)."""
+        api_url = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
+        req = urllib.request.Request(api_url, headers={"User-Agent": "MediaStudio-Updater"})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as response:
+                if response.status != 200:
+                    return False, "", ""
+                data = json.loads(response.read().decode("utf-8"))
+                tag_name = data.get("tag_name", "")
+                assets = data.get("assets", [])
+                target_name = "yt-dlp.exe" if sys.platform == "win32" else "yt-dlp"
+                for asset in assets:
+                    if asset.get("name") == target_name:
+                        return True, tag_name, asset.get("browser_download_url", "")
+                return True, tag_name, ""
+        except Exception:
+            return False, "", ""
+
+    @staticmethod
     def update_ytdlp_binary(log_callback: Optional[Callable[[str], None]] = None) -> Tuple[bool, str]:
         """
         Tải file yt-dlp.exe mới nhất từ GitHub release về %APPDATA%\\MediaStudio\\bin\\yt-dlp.exe.

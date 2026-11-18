@@ -16,9 +16,11 @@ from typing import List, Dict, Any, Optional
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QComboBox, QSlider, QRadioButton, QButtonGroup, QFrame, QFileDialog,
-    QMessageBox, QScrollArea, QTableWidget, QTableWidgetItem, QHeaderView
+    QMessageBox, QScrollArea, QTableWidget, QTableWidgetItem, QHeaderView,
+    QStackedWidget
 )
 from PySide6.QtCore import Qt, Slot, QThread, Signal
+from ui.components.empty_state import EmptyStateWidget
 from core.converter_engine import ConverterEngine
 from core.ffmpeg_runner import FFmpegRunner
 from core.system import format_bytes, clean_unicode_filename
@@ -67,8 +69,28 @@ class ConverterWidget(QWidget):
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(18, 16, 18, 16)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+
+        # Vỏ bọc căn giữa với max-width ~1100px
+        outer_container = QWidget()
+        outer_layout = QHBoxLayout(outer_container)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        container = QWidget()
+        container.setMaximumWidth(1100)
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(18, 16, 18, 16)
+        container_layout.setSpacing(12)
+
+        outer_layout.addStretch(1)
+        outer_layout.addWidget(container, 0)
+        outer_layout.addStretch(1)
 
         # 1. Header
         header = QHBoxLayout()
@@ -76,7 +98,7 @@ class ConverterWidget(QWidget):
         lbl_title.setProperty("class", "heading")
         header.addWidget(lbl_title)
         header.addStretch()
-        main_layout.addLayout(header)
+        container_layout.addLayout(header)
 
         # 2. Card Chọn file / Quét thư mục
         card_input = QFrame()
@@ -114,7 +136,7 @@ class ConverterWidget(QWidget):
         mode_row.addWidget(btn_clear_list)
         input_layout.addLayout(mode_row)
 
-        # Bảng danh sách file đã chọn
+        # Bảng danh sách file đã chọn kèm Empty State
         self.table_files = QTableWidget(0, 5)
         self.table_files.setHorizontalHeaderLabels(["Tên File", "Dung Lượng", "Thời Lượng", "Độ Phân Giải", "Codec"])
         self.table_files.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
@@ -122,14 +144,25 @@ class ConverterWidget(QWidget):
         self.table_files.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
         self.table_files.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
         self.table_files.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        self.table_files.setFixedHeight(110)
-        self.table_files.setStyleSheet("""
-            QTableWidget { background: #121418; border: 1px solid #2B303C; border-radius: 6px; font-size: 11px; }
-            QHeaderView::section { background: #181B20; color: #CBD5E1; padding: 4px; border: none; font-weight: bold; }
-        """)
-        input_layout.addWidget(self.table_files)
+        self.table_files.setMinimumHeight(110)
 
-        main_layout.addWidget(card_input)
+        self.empty_state = EmptyStateWidget(
+            icon="🔄",
+            title="Chưa có file nào trong danh sách chuyển đổi",
+            subtitle="Kéo thả video/audio vào đây hoặc bấm nút bên dưới để chọn file",
+            action_text="📁 Chọn File Chuyển Đổi...",
+            action_callback=self._browse_files
+        )
+
+        self.table_stack = QStackedWidget()
+        self.table_stack.setMinimumHeight(120)
+        self.table_stack.setMaximumHeight(200)
+        self.table_stack.addWidget(self.empty_state)
+        self.table_stack.addWidget(self.table_files)
+        self.table_stack.setCurrentIndex(0)
+
+        input_layout.addWidget(self.table_stack)
+        container_layout.addWidget(card_input)
 
         # 3. Card Cấu hình chuyển đổi
         card_config = QFrame()
@@ -140,13 +173,15 @@ class ConverterWidget(QWidget):
         # Hàng 1: Định dạng đích & Chế độ chuyển đổi
         row_fmt = QHBoxLayout()
         lbl_fmt = QLabel("Định Dạng Đích:")
-        lbl_fmt.setStyleSheet("color: #94A3B8; font-weight: 500;")
+        lbl_fmt.setProperty("class", "label-muted")
+        lbl_fmt.setStyleSheet("font-weight: 500;")
         self.cbo_format = QComboBox()
         self.cbo_format.addItems(["MP4", "MOV", "MKV", "AVI", "MP3", "WAV"])
         self.cbo_format.currentIndexChanged.connect(self._on_format_changed)
 
         lbl_mode = QLabel("Chế Độ Xử Lý:")
-        lbl_mode.setStyleSheet("color: #94A3B8; font-weight: 500; margin-left: 16px;")
+        lbl_mode.setProperty("class", "label-muted")
+        lbl_mode.setStyleSheet("font-weight: 500; margin-left: 16px;")
         self.cbo_mode = QComboBox()
         self.cbo_mode.addItem("Smart Compress (CRF H.264/H.265)", "reencode")
         self.cbo_mode.addItem("Remux Siêu Tốc (-c copy, đổi container trong 1s)", "remux")
@@ -176,13 +211,14 @@ class ConverterWidget(QWidget):
 
         row_codec = QHBoxLayout()
         lbl_codec = QLabel("Chuẩn Mã Hóa:")
-        lbl_codec.setStyleSheet("color: #94A3B8;")
+        lbl_codec.setProperty("class", "label-muted")
         self.cbo_codec = QComboBox()
         self.cbo_codec.addItem("H.264 (Độ tương thích cao)", "h264")
         self.cbo_codec.addItem("H.265 / HEVC (Nén giảm dung lượng sâu)", "hevc")
 
         lbl_res = QLabel("Độ Phân Giải:")
-        lbl_res.setStyleSheet("color: #94A3B8; margin-left: 16px;")
+        lbl_res.setProperty("class", "label-muted")
+        lbl_res.setStyleSheet("margin-left: 16px;")
         self.cbo_res = QComboBox()
         self.cbo_res.addItem("Giữ nguyên gốc (Original)", "original")
         self.cbo_res.addItem("4K Ultra HD (3840x2160)", "4k")
@@ -192,7 +228,8 @@ class ConverterWidget(QWidget):
         self.cbo_res.currentIndexChanged.connect(self._update_estimated_size)
 
         lbl_gpu = QLabel("Tăng Tốc:")
-        lbl_gpu.setStyleSheet("color: #94A3B8; margin-left: 16px;")
+        lbl_gpu.setProperty("class", "label-muted")
+        lbl_gpu.setStyleSheet("margin-left: 16px;")
         self.cbo_gpu = QComboBox()
         self.cbo_gpu.addItem("Tự động (Auto GPU)", "auto")
         self.cbo_gpu.addItem("NVIDIA NVENC", "nvidia")
@@ -212,7 +249,7 @@ class ConverterWidget(QWidget):
         # Thanh trượt CRF
         row_crf = QHBoxLayout()
         lbl_crf_title = QLabel("Mức Nén (CRF):")
-        lbl_crf_title.setStyleSheet("color: #94A3B8;")
+        lbl_crf_title.setProperty("class", "label-muted")
 
         self.slider_crf = QSlider(Qt.Horizontal)
         self.slider_crf.setRange(18, 30)
@@ -220,7 +257,8 @@ class ConverterWidget(QWidget):
         self.slider_crf.valueChanged.connect(self._on_crf_slider_changed)
 
         self.lbl_crf_val = QLabel("23 (Cân bằng Tốt)")
-        self.lbl_crf_val.setStyleSheet("color: #818CF8; font-weight: bold; min-width: 130px;")
+        self.lbl_crf_val.setProperty("class", "label-accent")
+        self.lbl_crf_val.setStyleSheet("font-weight: bold; min-width: 130px;")
 
         row_crf.addWidget(lbl_crf_title)
         row_crf.addWidget(self.slider_crf, 1)
@@ -231,15 +269,17 @@ class ConverterWidget(QWidget):
 
         # Hàng hiển thị ước tính dung lượng đầu ra
         self.lbl_estimate = QLabel("📊 Ước tính dung lượng: Chưa có file nào được chọn.")
-        self.lbl_estimate.setStyleSheet("font-size: 11px; color: #34D399; font-weight: 600; padding: 4px 0;")
+        self.lbl_estimate.setProperty("class", "label-success")
+        self.lbl_estimate.setStyleSheet("font-size: 11px; padding: 4px 0;")
         cfg_layout.addWidget(self.lbl_estimate)
 
-        main_layout.addWidget(card_config)
+        container_layout.addWidget(card_config)
 
         # 4. Card Thư mục xuất kết quả & Nút Submit Job
         action_row = QHBoxLayout()
         lbl_out = QLabel("Lưu Tại:")
-        lbl_out.setStyleSheet("color: #94A3B8; font-weight: 500;")
+        lbl_out.setProperty("class", "label-muted")
+        lbl_out.setStyleSheet("font-weight: 500;")
 
         default_dir = self.config_mgr.get("default_output_dir", str(Path.home() / "Downloads"))
         self.txt_out_dir = QLineEdit(default_dir)
@@ -259,7 +299,10 @@ class ConverterWidget(QWidget):
         action_row.addWidget(self.txt_out_dir, 1)
         action_row.addWidget(btn_browse_out)
         action_row.addWidget(self.btn_submit, 1)
-        main_layout.addLayout(action_row)
+        container_layout.addLayout(action_row)
+
+        scroll.setWidget(container)
+        main_layout.addWidget(scroll)
 
     def _browse_files(self):
         files, _ = QFileDialog.getOpenFileNames(
@@ -306,11 +349,16 @@ class ConverterWidget(QWidget):
 
         self.btn_submit.setEnabled(len(results) > 0)
         self.btn_submit.setText(f"🚀 Thêm Vào Hàng Đợi ({len(results)} tác vụ)")
+        if len(results) > 0:
+            self.table_stack.setCurrentIndex(1)
+        else:
+            self.table_stack.setCurrentIndex(0)
         self._update_estimated_size()
 
     def _clear_files(self):
         self.selected_files_info.clear()
         self.table_files.setRowCount(0)
+        self.table_stack.setCurrentIndex(0)
         self.btn_submit.setText("🚀 Thêm Vào Hàng Đợi (0 tác vụ)")
         self._update_estimated_size()
 

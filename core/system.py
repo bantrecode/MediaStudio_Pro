@@ -63,6 +63,10 @@ def get_appdata_dir() -> Path:
     
     try:
         base_dir.mkdir(parents=True, exist_ok=True)
+        # Kiểm tra quyền ghi thực tế (tránh lỗi permission trong sandbox hoặc quyền phân quyền chặt)
+        probe = base_dir / ".write_test"
+        probe.touch(exist_ok=True)
+        probe.unlink(missing_ok=True)
     except (PermissionError, OSError):
         base_dir = Path(tempfile.gettempdir()) / "MediaStudio"
         base_dir.mkdir(parents=True, exist_ok=True)
