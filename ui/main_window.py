@@ -415,6 +415,23 @@ class MainWindow(QMainWindow):
             if video_files and hasattr(cur_view, "_load_video"):
                 cur_view._load_video(video_files[0])
 
+    def open_files(self, file_paths: List[str]):
+        """Xử lý mở danh sách file truyền từ dòng lệnh hoặc menu ngữ cảnh chuột phải."""
+        if not file_paths:
+            return
+        video_files = [f for f in file_paths if Path(f).suffix.lower() in MEDIA_EXTENSIONS]
+        audio_files = [f for f in file_paths if Path(f).suffix.lower() in AUDIO_EXTENSIONS]
+        targets = video_files + audio_files
+        if not targets:
+            return
+
+        # Nạp vào Converter (Tab 0) làm mặc định
+        self.sidebar.set_active_page(0)
+        self.workspace.setCurrentIndex(0)
+        conv_view = self.view_widgets[0]
+        if hasattr(conv_view, "_load_files_into_table"):
+            conv_view._load_files_into_table(targets)
+
         self.log_console.append_log(
             f"Kéo thả nhận {len(video_files)} video, {len(audio_files)} audio", "INFO"
         )

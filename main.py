@@ -93,6 +93,12 @@ def main():
     window = MainWindow(modules, bridge)
     window.show()
 
+    # Mở file từ dòng lệnh nếu có (ví dụ: mở từ chuột phải context menu Windows)
+    if len(sys.argv) > 1:
+        initial_files = [arg for arg in sys.argv[1:] if os.path.exists(arg)]
+        if initial_files:
+            window.open_files(initial_files)
+
     exit_code = app.exec()
     release_single_instance_lock()
     sys.exit(exit_code)

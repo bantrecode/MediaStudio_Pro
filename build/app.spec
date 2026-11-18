@@ -69,9 +69,11 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-# Đường dẫn icon nếu có
+# Đường dẫn icon và version resource
 icon_file = ROOT_DIR / 'assets' / 'app_icon.ico'
 icon_path = str(icon_file) if icon_file.exists() else None
+version_file = SPEC_DIR / 'file_version_info.txt'
+version_path = str(version_file) if version_file.exists() else None
 
 exe = EXE(
     pyz,
@@ -90,6 +92,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=icon_path,
+    version=version_path,
 )
 
 coll = COLLECT(
