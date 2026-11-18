@@ -180,51 +180,71 @@ class FFmpegRunner:
 
         out_time_ms = 0
         speed_str = "N/A"
+        stderr_lines = []
+
+        def _drain_stderr():
+            try:
+                for s_line in iter(self.process.stderr.readline, ""):
+                    if not s_line:
+                        break
+                    s_clean = s_line.strip()
+                    if s_clean:
+                        stderr_lines.append(s_clean)
+                        if len(stderr_lines) > 300:
+                            stderr_lines.pop(0)
+            except Exception:
+                pass
+
+        import threading
+        stderr_thread = threading.Thread(target=_drain_stderr, daemon=True)
+        stderr_thread.start()
 
         # Đọc luồng -progress pipe:1
-        while self.process.poll() is None:
-            if self.is_cancelled:
-                break
+        try:
+            while self.process.poll() is None:
+                if self.is_cancelled:
+                    break
 
-            line = self.process.stdout.readline()
-            if not line:
-                continue
+                line = self.process.stdout.readline()
+                if not line:
+                    continue
 
-            line_str = line.strip()
-            if "=" in line_str:
-                key, val = line_str.split("=", 1)
-                key = key.strip()
-                val = val.strip()
+                line_str = line.strip()
+                if "=" in line_str:
+                    key, val = line_str.split("=", 1)
+                    key = key.strip()
+                    val = val.strip()
 
-                if key == "out_time_us":
-                    try:
-                        out_time_ms = int(val) / 1_000_000.0
-                    except ValueError:
-                        pass
-                elif key == "out_time_ms":
-                    try:
-                        out_time_ms = int(val) / 1_000.0
-                    except ValueError:
-                        pass
-                elif key == "speed":
-                    speed_str = val
-                elif key == "progress" and val == "continue":
-                    # Tính toán % và ETA
-                    if self.total_duration > 0 and out_time_ms > 0:
-                        percent = min(99, int((out_time_ms / self.total_duration) * 100))
-                        # Tính ETA
-                        elapsed = time.time() - self.start_time
-                        if percent > 0:
-                            total_estimated = elapsed / (percent / 100.0)
-                            eta_seconds = max(0, int(total_estimated - elapsed))
-                            eta_str = f"{eta_seconds // 60:02d}:{eta_seconds % 60:02d}"
-                        else:
-                            eta_str = "--:--"
+                    if key == "out_time_us":
+                        try:
+                            out_time_ms = int(val) / 1_000_000.0
+                        except ValueError:
+                            pass
+                    elif key == "out_time_ms":
+                        try:
+                            out_time_ms = int(val) / 1_000.0
+                        except ValueError:
+                            pass
+                    elif key == "speed":
+                        speed_str = val
+                    elif key == "progress" and val == "continue":
+                        # Tính toán % và ETA
+                        if self.total_duration > 0 and out_time_ms > 0:
+                            percent = min(99, int((out_time_ms / self.total_duration) * 100))
+                            elapsed = max(0.001, time.time() - self.start_time)
+                            current_speed = (out_time_ms / elapsed) if out_time_ms > 0 else 0.0
+                            if current_speed > 0:
+                                remaining_sec = max(0.0, self.total_duration - out_time_ms)
+                                eta_seconds = int(remaining_sec / current_speed)
+                                eta_str = f"{eta_seconds // 60:02d}:{eta_seconds % 60:02d}"
+                            else:
+                                eta_str = "--:--"
 
-                        if on_progress:
-                            on_progress(percent, speed_str, eta_str)
-
-        self.process.wait()
+                            if on_progress:
+                                on_progress(percent, speed_str, eta_str)
+        finally:
+            self.process.wait()
+            stderr_thread.join(timeout=2.0)
 
         if self.is_cancelled:
             if on_log:
@@ -232,7 +252,7 @@ class FFmpegRunner:
             return False
 
         if self.process.returncode != 0:
-            stderr_out = self.process.stderr.read().strip()
+            stderr_out = "\n".join(stderr_lines).strip()
             if on_log:
                 on_log(f"[ERROR] FFmpeg kết thúc với mã lỗi ({self.process.returncode}): {stderr_out[-500:]}")
             return False

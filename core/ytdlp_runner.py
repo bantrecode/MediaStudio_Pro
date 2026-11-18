@@ -15,6 +15,7 @@ import os
 import sys
 import json
 import re
+import threading
 import urllib.request
 import subprocess
 from typing import Dict, Any, List, Optional, Callable, Tuple
@@ -88,43 +89,63 @@ class YtDlpRunner:
                 on_log(f"[ERROR] {err}")
             return False, err
 
+        stderr_lines: List[str] = []
+
+        def _drain_stderr():
+            try:
+                for s_line in iter(self.process.stderr.readline, ""):
+                    if not s_line:
+                        break
+                    clean_s = s_line.strip()
+                    if clean_s:
+                        stderr_lines.append(clean_s)
+                        if len(stderr_lines) > 200:
+                            stderr_lines.pop(0)
+            except Exception:
+                pass
+
+        stderr_thread = threading.Thread(target=_drain_stderr, daemon=True)
+        stderr_thread.start()
+
         # Đọc stdout thời gian thực
-        while self.process.poll() is None:
-            if self.is_cancelled:
-                break
+        try:
+            while self.process.poll() is None:
+                if self.is_cancelled:
+                    break
 
-            line = self.process.stdout.readline()
-            if not line:
-                continue
+                line = self.process.stdout.readline()
+                if not line:
+                    continue
 
-            line_str = line.strip()
+                line_str = line.strip()
 
-            # Bắt mẫu progress template
-            if "[PROGRESS]:" in line_str:
-                try:
-                    payload = line_str.split("[PROGRESS]:", 1)[1]
-                    parts = payload.split("|")
-                    if len(parts) >= 3:
-                        pct_raw, speed_raw, eta_raw = parts[0].strip(), parts[1].strip(), parts[2].strip()
-                        # Xóa ký tự % và khoảng trắng
-                        pct_num = re.sub(r'[^0-9.]', '', pct_raw)
-                        pct_int = int(float(pct_num)) if pct_num else 0
-                        if on_progress:
-                            on_progress(pct_int, speed_raw or "--", eta_raw or "--:--")
-                except Exception:
-                    pass
-            elif on_log and line_str:
-                # Ghi log các dòng thông báo của yt-dlp
-                if not line_str.startswith("[download]"):
-                    on_log(line_str)
-
-        self.process.wait()
+                # Bắt mẫu progress template
+                if "[PROGRESS]:" in line_str:
+                    try:
+                        payload = line_str.split("[PROGRESS]:", 1)[1]
+                        parts = payload.split("|")
+                        if len(parts) >= 3:
+                            pct_raw, speed_raw, eta_raw = parts[0].strip(), parts[1].strip(), parts[2].strip()
+                            # Xóa ký tự % và khoảng trắng
+                            pct_num = re.sub(r'[^0-9.]', '', pct_raw)
+                            pct_int = int(float(pct_num)) if pct_num else 0
+                            if on_progress:
+                                on_progress(pct_int, speed_raw or "--", eta_raw or "--:--")
+                    except Exception:
+                        pass
+                elif on_log and line_str:
+                    # Ghi log các dòng thông báo của yt-dlp
+                    if not line_str.startswith("[download]"):
+                        on_log(line_str)
+        finally:
+            self.process.wait()
+            stderr_thread.join(timeout=2.0)
 
         if self.is_cancelled:
             return False, "Tác vụ tải đã bị hủy bởi người dùng."
 
         if self.process.returncode != 0:
-            stderr_out = self.process.stderr.read().strip()
+            stderr_out = "\n".join(stderr_lines).strip()
             logger.error(f"yt-dlp lỗi ({self.process.returncode}): {stderr_out}")
             if on_log:
                 on_log(f"[ERROR] yt-dlp: {stderr_out[-300:]}")

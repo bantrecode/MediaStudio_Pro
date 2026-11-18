@@ -13,9 +13,10 @@ import os
 import sys
 import json
 import time
+import threading
 import subprocess
 from pathlib import Path
-from typing import Dict, Any, Optional, Callable, List
+from typing import Dict, Any, Optional, Callable, List, Tuple
 from core.system import (
     get_binary_path, get_subprocess_kwargs,
     kill_process_tree, suspend_process_tree, resume_process_tree
@@ -205,49 +206,72 @@ class FFmpegRunner:
 
         out_time_sec = 0.0
         speed_str = "1.0x"
+        stderr_lines: List[str] = []
 
-        while self.process.poll() is None:
-            if self.is_cancelled:
-                break
+        # Luồng phụ đọc và xả bộ đệm stderr để chống tràn buffer (OS pipe deadlock)
+        def _drain_stderr():
+            try:
+                for s_line in iter(self.process.stderr.readline, ""):
+                    if not s_line:
+                        break
+                    clean_s = s_line.strip()
+                    if clean_s:
+                        stderr_lines.append(clean_s)
+                        if len(stderr_lines) > 300:
+                            stderr_lines.pop(0)
+            except Exception:
+                pass
 
-            line = self.process.stdout.readline()
-            if not line:
-                continue
+        stderr_thread = threading.Thread(target=_drain_stderr, daemon=True)
+        stderr_thread.start()
 
-            line = line.strip()
-            if "=" in line:
-                key, val = line.split("=", 1)
-                key, val = key.strip(), val.strip()
+        try:
+            while self.process.poll() is None:
+                if self.is_cancelled:
+                    break
 
-                if key in ["out_time_us", "out_time_ms"]:
-                    divisor = 1_000_000.0 if key == "out_time_us" else 1_000.0
-                    try:
-                        out_time_sec = int(val) / divisor
-                    except ValueError:
-                        pass
-                elif key == "speed":
-                    speed_str = val
-                elif key == "progress" and val == "continue":
-                    if self.total_duration > 0 and out_time_sec > 0:
-                        percent = min(99, int((out_time_sec / self.total_duration) * 100))
-                        elapsed = time.time() - self.start_time
-                        if percent > 0:
-                            total_est = elapsed / (percent / 100.0)
-                            eta_sec = max(0, int(total_est - elapsed))
-                            eta_str = f"{eta_sec // 60:02d}:{eta_sec % 60:02d}"
-                        else:
-                            eta_str = "--:--"
+                line = self.process.stdout.readline()
+                if not line:
+                    continue
 
-                        if on_progress:
-                            on_progress(percent, speed_str, eta_str)
+                line = line.strip()
+                if "=" in line:
+                    key, val = line.split("=", 1)
+                    key, val = key.strip(), val.strip()
 
-        self.process.wait()
+                    if key in ["out_time_us", "out_time_ms"]:
+                        divisor = 1_000_000.0 if key == "out_time_us" else 1_000.0
+                        try:
+                            out_time_sec = int(val) / divisor
+                        except ValueError:
+                            pass
+                    elif key == "speed":
+                        speed_str = val
+                    elif key == "progress" and val == "continue":
+                        if self.total_duration > 0 and out_time_sec > 0:
+                            percent = min(99, int((out_time_sec / self.total_duration) * 100))
+                            elapsed = max(0.001, time.time() - self.start_time)
+                            
+                            # Tính ETA chính xác từ tốc độ xử lý thực tế
+                            current_speed = (out_time_sec / elapsed) if out_time_sec > 0 else 0.0
+                            if current_speed > 0:
+                                remaining_sec = max(0.0, self.total_duration - out_time_sec)
+                                eta_sec = int(remaining_sec / current_speed)
+                                eta_str = f"{eta_sec // 60:02d}:{eta_sec % 60:02d}"
+                            else:
+                                eta_str = "--:--"
+
+                            if on_progress:
+                                on_progress(percent, speed_str, eta_str)
+        finally:
+            self.process.wait()
+            stderr_thread.join(timeout=2.0)
 
         if self.is_cancelled:
             return False, "Tác vụ đã bị người dùng hủy."
 
         if self.process.returncode != 0:
-            stderr_out = self.process.stderr.read().strip()
+            stderr_out = "\n".join(stderr_lines).strip()
             user_msg = self.translate_error(stderr_out)
             logger.error(f"FFmpeg thất bại ({self.process.returncode}): {stderr_out}")
             if on_log:

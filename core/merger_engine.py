@@ -202,18 +202,18 @@ class MergerEngine:
             if aspect_ratio_mode == "crop":
                 # Phóng to và crop ở giữa
                 scale_filter = (
-                    f"[{i}:v:0]scale={out_w}:{out_h}:force_original_aspect_ratio=increase,"
+                    f"[{i}:v:0]scale={out_w}:{out_h}:force_original_aspect_ratio=increase:force_divisible_by=2,"
                     f"crop={out_w}:{out_h},setsar=1,fps={fps_val:.2f},format=yuv420p[{v_tag}]"
                 )
             elif aspect_ratio_mode == "stretch":
                 # Kéo dãn theo kích thước
                 scale_filter = (
-                    f"[{i}:v:0]scale={out_w}:{out_h},setsar=1,fps={fps_val:.2f},format=yuv420p[{v_tag}]"
+                    f"[{i}:v:0]scale={out_w}:{out_h}:force_divisible_by=2,setsar=1,fps={fps_val:.2f},format=yuv420p[{v_tag}]"
                 )
             else:
                 # Default: letterbox (giữ tỉ lệ gốc, thêm viền đen căn giữa)
                 scale_filter = (
-                    f"[{i}:v:0]scale={out_w}:{out_h}:force_original_aspect_ratio=decrease,"
+                    f"[{i}:v:0]scale={out_w}:{out_h}:force_original_aspect_ratio=decrease:force_divisible_by=2,"
                     f"pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,fps={fps_val:.2f},format=yuv420p[{v_tag}]"
                 )
             filters.append(scale_filter)
