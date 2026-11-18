@@ -2,6 +2,21 @@
 
 > **Ứng dụng Windows Desktop Đa Năng Xử Lý Media:** Chuyển đổi & nén dung lượng, Tải video đa nền tảng, Ghép nối video, và Cắt phân đoạn chuyên nghiệp. Hoạt động offline 100%, không yêu cầu quyền Administrator, hỗ trợ tăng tốc GPU và đóng gói chạy độc lập trên mọi máy tính Windows 10/11.
 
+[![Tải Bộ Cài Đặt (Setup.exe)](https://img.shields.io/badge/Download-MediaStudio__Setup.exe-brightgreen?style=for-the-badge&logo=windows)](https://github.com/bantrecode/MediaStudio_Pro/releases/latest/download/MediaStudio_Setup.exe)
+[![Tải Bản Portable (.zip)](https://img.shields.io/badge/Download-MediaStudio__Portable.zip-blue?style=for-the-badge&logo=zip)](https://github.com/bantrecode/MediaStudio_Pro/releases/latest/download/MediaStudio_Portable.zip)
+[![Release Version](https://img.shields.io/badge/Version-v1.0.0-orange?style=for-the-badge)](https://github.com/bantrecode/MediaStudio_Pro/releases/latest)
+
+---
+
+## 📥 Tải Về & Cài Đặt (Downloads)
+
+Bạn có thể tải ngay phiên bản mới nhất tại [GitHub Releases](https://github.com/bantrecode/MediaStudio_Pro/releases/latest):
+
+| Bản phân phối | Định dạng | Dung lượng | Hướng dẫn sử dụng |
+| :--- | :---: | :---: | :--- |
+| **Bản Cài Đặt Khuyến Nghị** | [MediaStudio_Setup.exe](https://github.com/bantrecode/MediaStudio_Pro/releases/latest/download/MediaStudio_Setup.exe) | ~133 MB | Nhấp đúp để cài đặt tự động (không cần quyền Admin), tự tạo shortcut Desktop & Start Menu, tích hợp menu chuột phải *"Mở bằng MediaStudio Pro"*. |
+| **Bản Di Động (Portable)** | [MediaStudio_Portable.zip](https://github.com/bantrecode/MediaStudio_Pro/releases/latest/download/MediaStudio_Portable.zip) | ~181 MB | Tải về, giải nén ra thư mục bất kỳ và chạy trực tiếp file `MediaStudio.exe` (thích hợp copy vào USB chạy trên máy tính khác). |
+
 ---
 
 ## 🌟 Tính Năng Nổi Bật
